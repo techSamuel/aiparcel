@@ -1587,7 +1587,6 @@ try {
         const verificationView = document.getElementById('verification-view');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
-        const passwordInput = document.getElementById('password');
         // loginBtn and registerBtn replaced by authActionBtn logic
         const logoutBtn = document.getElementById('logoutBtn');
         const userInfo = document.getElementById('userInfo');

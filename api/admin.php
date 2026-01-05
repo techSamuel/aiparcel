@@ -12,9 +12,7 @@ $input = json_decode(file_get_contents('php://input'), true);
 $action = $_POST['action'] ?? $input['action'] ?? $_GET['action'] ?? null;
 
 
-if ($action == 'sendSubscriptionConfirmationEmail') {
-    sendSubscriptionConfirmationEmail("rodalsoft@gmail.com", 2);
-}
+
 
 
 // NEW: If the action is NOT 'login', then perform the security check.
