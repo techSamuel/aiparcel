@@ -249,6 +249,8 @@ try {
             background-size: 400% 400%;
             animation: gradientShift 15s ease infinite;
             padding: 20px;
+        width: 100%;
+            box-sizing: border-box;
         }
 
         @keyframes gradientShift {
@@ -1738,7 +1740,8 @@ try {
 
                     document.body.className = 'show-app'; // Set class
                     landingView.style.display = 'none';
-                    authContainer.style.display = 'flex';
+                    authContainer.style.display = 'none'; // Hide auth container
+                    appView.style.display = 'block'; // Show app view explicitly
                     await renderAppView();
                 } else {
                     const publicSettings = await apiCall('load_user_data');
@@ -1746,6 +1749,7 @@ try {
                     document.body.className = 'show-landing'; // Set class
                     landingView.style.display = 'block';
                     authContainer.style.display = 'none';
+                    appView.style.display = 'none';
                 }
             } catch (e) {
                 try {
@@ -1756,6 +1760,7 @@ try {
                 document.body.className = 'show-landing'; // Set class
                 landingView.style.display = 'block';
                 document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('app-view').style.display = 'none';
             }
         });
 
@@ -1764,6 +1769,7 @@ try {
             document.body.className = 'show-app'; // Set class
             document.getElementById('landing-view').style.display = 'none';
             document.getElementById('auth-container').style.display = 'flex';
+            document.getElementById('app-view').style.display = 'none';
             renderAuthView();
         }
 
@@ -1778,6 +1784,8 @@ try {
                 if (data.loggedIn && data.user) {
                     currentUser = data.user;
                     isPremiumUser = data.user.plan_id > 1;
+                    document.getElementById('auth-container').style.display = 'none'; // Hide auth
+                    document.getElementById('app-view').style.display = 'block'; // Show app
                     await renderAppView();
                 }
             } catch (error) {
