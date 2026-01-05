@@ -24,8 +24,8 @@ define('ADMIN_NOTIFICATION_EMAIL', 'rodalsoft@gmail.com'); // Email for purchase
 
 // Google OAuth Configuration
 // Get these from: https://console.cloud.google.com/apis/credentials
-define('GOOGLE_CLIENT_ID', 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com');
-define('GOOGLE_CLIENT_SECRET', 'YOUR_GOOGLE_CLIENT_SECRET');
+define('GOOGLE_CLIENT_ID', '1077647211285-fqdquekcouh2vdqelemcuagd0bia43hq.apps.googleusercontent.com');
+define('GOOGLE_CLIENT_SECRET', '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');
 define('GOOGLE_REDIRECT_URI', APP_URL . '/api/google-auth.php');
 
 
