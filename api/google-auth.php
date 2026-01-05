@@ -1,0 +1,127 @@
+<?php
+/**
+ * Google OAuth Handler
+ * Handles the OAuth callback from Google and creates/logs in users
+ */
+
+session_start();
+require_once 'config.php';
+
+// Check if we have an authorization code
+if (!isset($_GET['code'])) {
+    // No code, redirect to login with error
+    header('Location: ' . APP_URL . '/index.php?error=google_auth_failed');
+    exit;
+}
+
+$code = $_GET['code'];
+
+// Exchange authorization code for access token
+$tokenUrl = 'https://oauth2.googleapis.com/token';
+$tokenData = [
+    'code' => $code,
+    'client_id' => GOOGLE_CLIENT_ID,
+    'client_secret' => GOOGLE_CLIENT_SECRET,
+    'redirect_uri' => GOOGLE_REDIRECT_URI,
+    'grant_type' => 'authorization_code'
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $tokenUrl);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($tokenData));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+$tokenResponse = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($httpCode !== 200) {
+    header('Location: ' . APP_URL . '/index.php?error=google_token_failed');
+    exit;
+}
+
+$tokenInfo = json_decode($tokenResponse, true);
+
+if (!isset($tokenInfo['access_token'])) {
+    header('Location: ' . APP_URL . '/index.php?error=google_token_invalid');
+    exit;
+}
+
+$accessToken = $tokenInfo['access_token'];
+
+// Get user info from Google
+$userInfoUrl = 'https://www.googleapis.com/oauth2/v2/userinfo';
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $userInfoUrl);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $accessToken]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+$userResponse = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($httpCode !== 200) {
+    header('Location: ' . APP_URL . '/index.php?error=google_userinfo_failed');
+    exit;
+}
+
+$googleUser = json_decode($userResponse, true);
+
+if (!isset($googleUser['email']) || !isset($googleUser['id'])) {
+    header('Location: ' . APP_URL . '/index.php?error=google_user_invalid');
+    exit;
+}
+
+$googleId = $googleUser['id'];
+$email = $googleUser['email'];
+$displayName = $googleUser['name'] ?? explode('@', $email)[0];
+
+try {
+    // Check if user exists by google_id
+    $stmt = $pdo->prepare("SELECT id, email, display_name, is_premium, is_admin FROM users WHERE google_id = ?");
+    $stmt->execute([$googleId]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($user) {
+        // Existing Google user - log them in
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['is_admin'] = (bool) $user['is_admin'];
+        header('Location: ' . APP_URL . '/index.php?google_login=success');
+        exit;
+    }
+
+    // Check if user exists by email (link Google account to existing)
+    $stmt = $pdo->prepare("SELECT id, email, display_name, is_premium, is_admin, google_id FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+    $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($existingUser) {
+        // User exists with this email - link Google account
+        $updateStmt = $pdo->prepare("UPDATE users SET google_id = ?, is_verified = 1 WHERE id = ?");
+        $updateStmt->execute([$googleId, $existingUser['id']]);
+
+        $_SESSION['user_id'] = $existingUser['id'];
+        $_SESSION['is_admin'] = (bool) $existingUser['is_admin'];
+        header('Location: ' . APP_URL . '/index.php?google_login=success');
+        exit;
+    }
+
+    // New user - create account
+    $stmt = $pdo->prepare("INSERT INTO users (email, google_id, display_name, is_verified, plan_id) VALUES (?, ?, ?, 1, 1)");
+    $stmt->execute([$email, $googleId, $displayName]);
+    $newUserId = $pdo->lastInsertId();
+
+    $_SESSION['user_id'] = $newUserId;
+    $_SESSION['is_admin'] = false;
+    header('Location: ' . APP_URL . '/index.php?google_login=success&new_user=1');
+    exit;
+
+} catch (PDOException $e) {
+    error_log("Google Auth Error: " . $e->getMessage());
+    header('Location: ' . APP_URL . '/index.php?error=google_db_error');
+    exit;
+}
+?>
