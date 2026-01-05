@@ -249,7 +249,7 @@ try {
             background-size: 400% 400%;
             animation: gradientShift 15s ease infinite;
             padding: 20px;
-        width: 100%;
+            width: 100%;
             box-sizing: border-box;
         }
 
@@ -1294,7 +1294,21 @@ try {
                 <img id="authLogo" src="" alt="Logo" style="display: block; margin: 0 auto 20px; max-height: 80px;">
                 <h1 id="authTitle">Welcome Back!</h1>
                 <p>Sign in to manage your parcels efficiently</p>
+                <!-- Tab Switching -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e1e8ed;">
+                    <button id="tabLogin" class="auth-tab active"
+                        style="flex:1; padding: 10px; background:none; border:none; border-bottom: 2px solid transparent; cursor:pointer; font-weight:600; font-size:16px;">Login</button>
+                    <button id="tabRegister" class="auth-tab"
+                        style="flex:1; padding: 10px; background:none; border:none; border-bottom: 2px solid transparent; cursor:pointer; color:#95a5a6; font-size:16px;">Register</button>
+                </div>
+
                 <div class="auth-form">
+                    <!-- Register Only Fields -->
+                    <div class="input-group register-field" style="display:none;">
+                        <span class="input-icon">👤</span>
+                        <input type="text" id="fullName" placeholder="Full Name">
+                    </div>
+
                     <div class="input-group">
                         <span class="input-icon">✉️</span>
                         <input type="email" id="email" placeholder="Email Address" required>
@@ -1303,10 +1317,17 @@ try {
                         <span class="input-icon">🔒</span>
                         <input type="password" id="password" placeholder="Password" required>
                     </div>
-                    <div class="auth-buttons">
-                        <button id="loginBtn">Login <span class="loader"></span></button>
-                        <button id="registerBtn">Register <span class="loader"></span></button>
+
+                    <!-- Register Only Fields -->
+                    <div class="input-group register-field" style="display:none;">
+                        <span class="input-icon">🔐</span>
+                        <input type="password" id="confirmPassword" placeholder="Confirm Password">
                     </div>
+
+                    <button id="authActionBtn"
+                        style="width: 100%; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; background-color: var(--primary-color); color: white; margin-top: 10px;">
+                        Login <span class="loader"></span>
+                    </button>
 
                     <div class="auth-divider">
                         <span>or continue with</span>
@@ -1541,7 +1562,7 @@ try {
     <script type="text/javascript" charset="utf8"
         src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script>
-        // --- GLOBAL STATE & CONSTANTS ---
+        // --- GLOBAL STA        TE & CONSTANTS ---
         let userCourierStores = {};
         let geminiApiKey = null;
         let isPremiumUser = false;
@@ -1566,8 +1587,8 @@ try {
         const verificationView = document.getElementById('verification-view');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
-        const loginBtn = document.getElementById('loginBtn');
-        const registerBtn = document.getElementById('registerBtn');
+        const passwordInput = document.getElementById('password');
+        // loginBtn and registerBtn replaced by authActionBtn logic
         const logoutBtn = document.getElementById('logoutBtn');
         const userInfo = document.getElementById('userInfo');
         const authMessage = document.getElementById('auth-message');
@@ -1777,28 +1798,109 @@ try {
         document.getElementById('show-login-btn-hero').addEventListener('click', showAuthPage);
 
 
-        loginBtn.addEventListener('click', async () => {
-            loginBtn.disabled = true;
+        // --- Tabbed Auth Logic ---
+        let currentAuthMode = 'login'; // 'login' or 'register'
+        const authActionBtn = document.getElementById('authActionBtn'); // New combined button
+        const fullNameInput = document.getElementById('fullName'); // New field
+        const confirmPasswordInput = document.getElementById('confirmPassword'); // New field
+
+        // Initialize Tab Listeners
+        document.getElementById('tabLogin').addEventListener('click', () => switchAuthMode('login'));
+        document.getElementById('tabRegister').addEventListener('click', () => switchAuthMode('register'));
+
+        function switchAuthMode(mode) {
+            currentAuthMode = mode;
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.register-field').forEach(f => f.style.display = (mode === 'register') ? 'block' : 'none');
+
+            if (mode === 'login') {
+                document.getElementById('tabLogin').classList.add('active');
+                document.getElementById('authActionBtn').innerHTML = 'Login <span class="loader"></span>';
+                document.getElementById('tabRegister').style.color = '#95a5a6';
+                document.getElementById('tabLogin').style.color = 'var(--dark-gray)';
+            } else {
+                document.getElementById('tabRegister').classList.add('active');
+                document.getElementById('authActionBtn').innerHTML = 'Register <span class="loader"></span>';
+                document.getElementById('tabLogin').style.color = '#95a5a6';
+                document.getElementById('tabRegister').style.color = 'var(--dark-gray)';
+            }
+            authMessage.style.display = 'none'; // Clear messages
+        }
+
+        // Unified Auth Action Handler
+        authActionBtn.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+
+            if (!email || !password) {
+                showMessage(authMessage, 'Please fill in all required fields', 'error');
+                return;
+            }
+
+            authActionBtn.disabled = true;
+
             try {
-                const data = await apiCall('login', { email: emailInput.value, password: passwordInput.value });
-                if (data.loggedIn && data.user) {
-                    currentUser = data.user;
-                    isPremiumUser = data.user.plan_id > 1;
-                    document.getElementById('auth-container').style.display = 'none'; // Hide auth
-                    document.getElementById('app-view').style.display = 'block'; // Show app
-                    await renderAppView();
+                if (currentAuthMode === 'login') {
+                    // --- LOGIN LOGIC ---
+                    const data = await apiCall('login', { email, password });
+                    if (data.loggedIn && data.user) {
+                        currentUser = data.user;
+                        isPremiumUser = data.user.plan_id > 1;
+                        document.getElementById('auth-container').style.display = 'none';
+                        document.getElementById('app-view').style.display = 'block';
+                        await renderAppView();
+                    }
+                } else {
+                    // --- REGISTER LOGIC ---
+                    const fullName = fullNameInput.value;
+                    const confirmPass = confirmPasswordInput.value;
+
+                    if (!fullName) { throw new Error("Full Name is required."); }
+                    if (password !== confirmPass) { throw new Error("Passwords do not match."); }
+                    if (password.length < 6) { throw new Error("Password must be at least 6 characters."); }
+
+                    await handleAuthAction('register', 'Registration successful. Please check your email.', {
+                        email, password, display_name: fullName
+                    });
                 }
             } catch (error) {
                 if (error.message.includes('Email not verified')) {
                     authView.style.display = 'none';
                     verificationView.style.display = 'block';
-                } else { showMessage(authMessage, error.message, 'error'); }
+                } else {
+                    showMessage(authMessage, error.message, 'error');
+                }
             } finally {
-                loginBtn.disabled = false;
+                authActionBtn.disabled = false;
             }
         });
 
-        registerBtn.addEventListener('click', () => handleAuthAction('register', 'Registration successful. Please check your email.'));
+        // Updated helper to accept data payload
+        async function handleAuthAction(action, successMessage, payload = {}) {
+            // For resend_verification, we might not have payload here, so check
+            const body = (action === 'register') ? payload : { email: emailInput.value };
+
+            try {
+                // If action is register, payload already has email/pass/name. If resend, we need email from input usually, or context.
+                // But resend logic usually relies on emailInput.
+                if (action === 'resend_verification' && !body.email) body.email = emailInput.value;
+
+                await apiCall(action, body);
+                const msgEl = (action === 'register') ? authMessage : document.getElementById('verification-message');
+                showMessage(msgEl, successMessage, 'success');
+                if (action === 'register') {
+                    // Optional: Switch to verification view or showing message
+                    // For now keeping it simple as per original
+                    authView.style.display = 'none';
+                    verificationView.style.display = 'block';
+                }
+            } catch (error) {
+                const msgEl = (action === 'register') ? authMessage : document.getElementById('verification-message');
+                showMessage(msgEl, error.message, 'error');
+                throw error; // Re-throw to be caught by main handler if needed
+            }
+        }
+
         resendVerificationBtn.addEventListener('click', () => handleAuthAction('resend_verification', 'If an account exists, a new verification link has been sent.'));
 
         // --- Google Sign-In Handler ---

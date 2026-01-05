@@ -18,10 +18,25 @@ $code = $_GET['code'];
 
 // Exchange authorization code for access token
 $tokenUrl = 'https://oauth2.googleapis.com/token';
+// Fetch settings from DB
+$stmt = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('google_client_id', 'google_client_secret')");
+$settings = array_column($stmt->fetchAll(), 'setting_value', 'setting_key');
+
+$db_client_id = $settings['google_client_id'] ?? '';
+$db_client_secret = $settings['google_client_secret'] ?? '';
+
+// Fallback logic
+$client_id = !empty($db_client_id) ? $db_client_id : (defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '');
+$client_secret = !empty($db_client_secret) ? $db_client_secret : (defined('GOOGLE_CLIENT_SECRET') ? GOOGLE_CLIENT_SECRET : '');
+
+if (empty($client_id) || empty($client_secret)) {
+    die('Google Auth is not configured.');
+}
+
 $tokenData = [
     'code' => $code,
-    'client_id' => GOOGLE_CLIENT_ID,
-    'client_secret' => GOOGLE_CLIENT_SECRET,
+    'client_id' => $client_id,
+    'client_secret' => $client_secret,
     'redirect_uri' => GOOGLE_REDIRECT_URI,
     'grant_type' => 'authorization_code'
 ];

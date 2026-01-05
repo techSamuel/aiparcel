@@ -12,7 +12,7 @@ $input = json_decode(file_get_contents('php://input'), true);
 $action = $_POST['action'] ?? $input['action'] ?? $_GET['action'] ?? null;
 
 
-if($action=='sendSubscriptionConfirmationEmail'){
+if ($action == 'sendSubscriptionConfirmationEmail') {
     sendSubscriptionConfirmationEmail("rodalsoft@gmail.com", 2);
 }
 
@@ -28,28 +28,64 @@ if ($action !== 'login') {
 
 
 switch ($action) {
-    case 'login': handle_login(); break;
-    case 'get_stats': handle_get_stats(); break;
-    case 'list_users': handle_list_users(); break;
-    case 'get_global_history': handle_get_global_history(); break;
-    case 'get_user_details': handle_get_user_details(); break;
-    case 'get_plans': handle_get_plans(); break;
-    case 'save_plan': handle_save_plan(); break;
-    case 'delete_plan': handle_delete_plan(); break;
-    case 'get_payment_methods': handle_get_payment_methods(); break;
-    case 'save_payment_method': handle_save_payment_method(); break;
-    case 'delete_payment_method': handle_delete_payment_method(); break;
-    case 'get_subscription_orders': handle_get_subscription_orders(); break;
-    case 'update_subscription_status': update_subscription_status(); break;
-    case 'update_user_role': handle_update_user_role(); break;
-    case 'get_settings': handle_get_settings(); break;
-    case 'save_settings': handle_save_settings(); break;
-    case 'update_profile': handle_update_profile(); break;
-    default: json_response(['error' => 'Invalid action'], 400);
+    case 'login':
+        handle_login();
+        break;
+    case 'get_stats':
+        handle_get_stats();
+        break;
+    case 'list_users':
+        handle_list_users();
+        break;
+    case 'get_global_history':
+        handle_get_global_history();
+        break;
+    case 'get_user_details':
+        handle_get_user_details();
+        break;
+    case 'get_plans':
+        handle_get_plans();
+        break;
+    case 'save_plan':
+        handle_save_plan();
+        break;
+    case 'delete_plan':
+        handle_delete_plan();
+        break;
+    case 'get_payment_methods':
+        handle_get_payment_methods();
+        break;
+    case 'save_payment_method':
+        handle_save_payment_method();
+        break;
+    case 'delete_payment_method':
+        handle_delete_payment_method();
+        break;
+    case 'get_subscription_orders':
+        handle_get_subscription_orders();
+        break;
+    case 'update_subscription_status':
+        update_subscription_status();
+        break;
+    case 'update_user_role':
+        handle_update_user_role();
+        break;
+    case 'get_settings':
+        handle_get_settings();
+        break;
+    case 'save_settings':
+        handle_save_settings();
+        break;
+    case 'update_profile':
+        handle_update_profile();
+        break;
+    default:
+        json_response(['error' => 'Invalid action'], 400);
 }
 
 
-function handle_update_profile() {
+function handle_update_profile()
+{
     global $pdo, $input;
 
     // The user ID comes from the session, ensuring admins can only edit their own profile
@@ -73,7 +109,8 @@ function handle_update_profile() {
 }
 
 
-function handle_login() {
+function handle_login()
+{
     global $pdo, $input;
 
     $email = filter_var($input['email'], FILTER_VALIDATE_EMAIL);
@@ -102,7 +139,8 @@ function handle_login() {
     }
 }
 
-function handle_get_stats() {
+function handle_get_stats()
+{
     global $pdo;
     $stmt_users = $pdo->query("SELECT COUNT(*) FROM users");
     $stmt_parses = $pdo->query("SELECT COUNT(*) FROM parses");
@@ -114,7 +152,8 @@ function handle_get_stats() {
     ]);
 }
 
-function handle_list_users() {
+function handle_list_users()
+{
     global $pdo;
     try {
         $stmt = $pdo->query("
@@ -128,10 +167,12 @@ function handle_list_users() {
     }
 }
 
-function handle_get_global_history() {
+function handle_get_global_history()
+{
     global $pdo, $input;
     $type = $input['type'];
-    if (!in_array($type, ['parses', 'orders'])) json_response(['error' => 'Invalid type'], 400);
+    if (!in_array($type, ['parses', 'orders']))
+        json_response(['error' => 'Invalid type'], 400);
 
     $stmt = $pdo->prepare("
         SELECT t.*, u.email as userEmail 
@@ -143,7 +184,8 @@ function handle_get_global_history() {
     json_response($stmt->fetchAll());
 }
 
-function handle_get_user_details() {
+function handle_get_user_details()
+{
     global $pdo, $input;
     $target_uid = $input['uid'];
     $details = [];
@@ -172,7 +214,8 @@ function handle_get_user_details() {
     json_response($details);
 }
 
-function handle_get_plans() {
+function handle_get_plans()
+{
     global $pdo;
     $stmt = $pdo->query("SELECT * FROM plans");
     json_response($stmt->fetchAll());
@@ -180,15 +223,20 @@ function handle_get_plans() {
 
 // In api/admin.php
 
-function handle_save_plan() {
+function handle_save_plan()
+{
     global $pdo, $input;
     $id = $input['id'] ?? null;
-    
+
     // Prepare data, including new permissions
     $params = [
-        $input['name'], $input['price'], 
-        $input['order_limit_monthly'], $input['order_limit_daily'], 
-        $input['validity_days'], $input['description'], $input['is_active'],
+        $input['name'],
+        $input['price'],
+        $input['order_limit_monthly'],
+        $input['order_limit_daily'],
+        $input['validity_days'],
+        $input['description'],
+        $input['is_active'],
         $input['can_parse_ai'] ?? 0,
         $input['can_autocomplete'] ?? 0,
         $input['can_check_risk'] ?? 0,
@@ -209,20 +257,23 @@ function handle_save_plan() {
     json_response(['success' => true]);
 }
 
-function handle_delete_plan() {
+function handle_delete_plan()
+{
     global $pdo, $input;
     $stmt = $pdo->prepare("DELETE FROM plans WHERE id = ?");
     $stmt->execute([$input['id']]);
     json_response(['success' => true]);
 }
 
-function handle_get_payment_methods() {
+function handle_get_payment_methods()
+{
     global $pdo;
     $stmt = $pdo->query("SELECT * FROM payment_methods");
     json_response($stmt->fetchAll());
 }
 
-function handle_save_payment_method() {
+function handle_save_payment_method()
+{
     global $pdo, $input;
     $id = $input['id'] ?? null;
     if ($id) {
@@ -235,14 +286,16 @@ function handle_save_payment_method() {
     json_response(['success' => true]);
 }
 
-function handle_delete_payment_method() {
+function handle_delete_payment_method()
+{
     global $pdo, $input;
     $stmt = $pdo->prepare("DELETE FROM payment_methods WHERE id = ?");
     $stmt->execute([$input['id']]);
     json_response(['success' => true]);
 }
 
-function handle_get_subscription_orders() {
+function handle_get_subscription_orders()
+{
     global $pdo;
     $stmt = $pdo->query("
         SELECT s.*, u.email as user_email, p.name as plan_name, pm.name as payment_method_name
@@ -256,7 +309,8 @@ function handle_get_subscription_orders() {
 }
 
 
-function update_subscription_status(){
+function update_subscription_status()
+{
     global $pdo, $input; // <-- ADD THIS LINE
 
     $sub_id = $input['id'];
@@ -291,11 +345,11 @@ function update_subscription_status(){
             $stmt_user_email = $pdo->prepare("SELECT email FROM users WHERE id = ?");
             $stmt_user_email->execute([$sub['user_id']]);
             $user_email = $stmt_user_email->fetchColumn();
-            
-           // json_response(['plan_id' => $sub['plan_id']]);
-            
+
+            // json_response(['plan_id' => $sub['plan_id']]);
+
             // Assuming PHPMailer is set up correctly in config.php or similar
-             sendSubscriptionConfirmationEmail($user_email, $sub['plan_id'], $expiry_date);
+            sendSubscriptionConfirmationEmail($user_email, $sub['plan_id'], $expiry_date);
 
         }
         $pdo->commit();
@@ -306,16 +360,18 @@ function update_subscription_status(){
     }
 }
 
-function handle_update_user_role() {
+function handle_update_user_role()
+{
     global $pdo, $input;
     $target_uid = $input['uid'];
-    $is_premium = (bool)$input['isPremium'];
+    $is_premium = (bool) $input['isPremium'];
     $stmt = $pdo->prepare("UPDATE users SET is_premium = ? WHERE id = ?");
     $stmt->execute([$is_premium, $target_uid]);
     json_response(['success' => true]);
 }
 
-function handle_get_settings() {
+function handle_get_settings()
+{
     global $pdo;
     $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings");
     $settings = [];
@@ -326,6 +382,8 @@ function handle_get_settings() {
         'geminiApiKey' => $settings['gemini_api_key'] ?? '',
         'barikoiApiKey' => $settings['barikoi_api_key'] ?? '',
         'googleMapsApiKey' => $settings['google_maps_api_key'] ?? '',
+        'googleClientId' => $settings['google_client_id'] ?? '',
+        'googleClientSecret' => $settings['google_client_secret'] ?? '',
         'autocompleteService' => $settings['autocomplete_service'] ?? 'barikoi',
         'showAiParseButton' => $settings['show_ai_parse_button'] ?? '1',
         'showAutocompleteButton' => $settings['show_autocomplete_button'] ?? '1',
@@ -336,7 +394,8 @@ function handle_get_settings() {
     ]);
 }
 
-function handle_save_settings() {
+function handle_save_settings()
+{
     global $pdo;
     $pdo->beginTransaction();
     try {
@@ -345,6 +404,8 @@ function handle_save_settings() {
             'gemini_api_key' => $_POST['geminiApiKey'] ?? '',
             'barikoi_api_key' => $_POST['barikoiApiKey'] ?? '',
             'google_maps_api_key' => $_POST['googleMapsApiKey'] ?? '',
+            'google_client_id' => $_POST['googleClientId'] ?? '',
+            'google_client_secret' => $_POST['googleClientSecret'] ?? '',
             'autocomplete_service' => $_POST['autocompleteService'] ?? 'barikoi',
             'show_ai_parse_button' => $_POST['showAiParseButton'] ?? '1',
             'show_autocomplete_button' => $_POST['showAutocompleteButton'] ?? '1',
@@ -354,7 +415,8 @@ function handle_save_settings() {
 
         if (isset($_FILES['appLogoFile']) && $_FILES['appLogoFile']['error'] == UPLOAD_ERR_OK) {
             $upload_dir = 'uploads/';
-            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+            if (!is_dir($upload_dir))
+                mkdir($upload_dir, 0755, true);
             $file_extension = pathinfo($_FILES['appLogoFile']['name'], PATHINFO_EXTENSION);
             $new_filename = 'logo.' . $file_extension;
             $upload_file = $upload_dir . $new_filename;
@@ -378,9 +440,10 @@ function handle_save_settings() {
 
 
 // --- NEW HELPER FUNCTION FOR SUBSCRIPTION EMAIL ---
-function sendSubscriptionConfirmationEmail($email, $plan_id, $expiry_date) {
-    global $pdo; 
-    
+function sendSubscriptionConfirmationEmail($email, $plan_id, $expiry_date)
+{
+    global $pdo;
+
     // Fetch required data
     $stmt_plan = $pdo->prepare("SELECT name FROM plans WHERE id = ?");
     $stmt_plan->execute([$plan_id]);
@@ -396,34 +459,34 @@ function sendSubscriptionConfirmationEmail($email, $plan_id, $expiry_date) {
     require_once 'src/SMTP.php';
 
     $mail = new PHPMailer(true);
-    
+
     // Load the new HTML template
     $body = file_get_contents('user_subscription_activated.html');
-    
+
     // Replace placeholders
     $replacements = [
-        '{{appName}}'       => $appName,
-        '{{logoUrl}}'       => $logoUrl,
-        '{{planName}}'      => $plan_name,
-        '{{expiryDate}}'    => date("F j, Y", strtotime($expiry_date)), // Format date nicely
+        '{{appName}}' => $appName,
+        '{{logoUrl}}' => $logoUrl,
+        '{{planName}}' => $plan_name,
+        '{{expiryDate}}' => date("F j, Y", strtotime($expiry_date)), // Format date nicely
         '{{dashboardLink}}' => APP_URL
     ];
     $body = str_replace(array_keys($replacements), array_values($replacements), $body);
 
     try {
         $mail->isSMTP();
-        $mail->Host       = SMTP_HOST;
-        $mail->SMTPAuth   = true;
-        $mail->Username   = SMTP_USER;
-        $mail->Password   = SMTP_PASS;
+        $mail->Host = SMTP_HOST;
+        $mail->SMTPAuth = true;
+        $mail->Username = SMTP_USER;
+        $mail->Password = SMTP_PASS;
         $mail->SMTPSecure = (SMTP_SECURE === 'tls') ? PHPMailer::ENCRYPTION_STARTTLS : PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port       = SMTP_PORT;
+        $mail->Port = SMTP_PORT;
 
         $mail->setFrom(SMTP_FROM_EMAIL, $appName);
         $mail->addAddress($email);
         $mail->isHTML(true);
         $mail->Subject = 'Your Subscription on ' . $appName . ' is Active!';
-        $mail->Body    = $body;
+        $mail->Body = $body;
 
         $mail->send();
         return true;

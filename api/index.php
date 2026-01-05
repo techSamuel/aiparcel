@@ -150,6 +150,8 @@ function handle_auth($action, $input, $pdo)
         case 'register':
             $email = filter_var($input['email'], FILTER_VALIDATE_EMAIL);
             $password = $input['password'];
+            $display_name = trim($input['display_name'] ?? ''); // New field
+
             if (!$email || strlen($password) < 6) {
                 json_response(['error' => 'Invalid email or password (min 6 chars).'], 400);
             }
@@ -157,8 +159,9 @@ function handle_auth($action, $input, $pdo)
             $token = bin2hex(random_bytes(32));
 
             try {
-                $stmt = $pdo->prepare("INSERT INTO users (email, password, verification_token, plan_id) VALUES (?, ?, ?, 1)");
-                $stmt->execute([$email, $hashed_password, $token]);
+                // Modified INSERT to include display_name
+                $stmt = $pdo->prepare("INSERT INTO users (email, password, display_name, verification_token, plan_id) VALUES (?, ?, ?, ?, 1)");
+                $stmt->execute([$email, $hashed_password, $display_name, $token]);
 
                 // Call the new reusable function
                 sendVerificationEmail($email, $token);
@@ -292,8 +295,19 @@ function handle_auth($action, $input, $pdo)
             break;
 
         case 'google_login_url':
+            // Fetch ID from DB
+            $stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'google_client_id'");
+            $db_client_id = $stmt->fetchColumn();
+
+            // Fallback to constant if DB value is empty
+            $client_id = !empty($db_client_id) ? $db_client_id : (defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '');
+
+            if (empty($client_id) || $client_id === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
+                json_response(['error' => 'Google Login is not configured by admin.'], 500);
+            }
+
             $params = [
-                'client_id' => GOOGLE_CLIENT_ID,
+                'client_id' => $client_id,
                 'redirect_uri' => GOOGLE_REDIRECT_URI,
                 'response_type' => 'code',
                 'scope' => 'email profile',
