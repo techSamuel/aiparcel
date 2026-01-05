@@ -1419,9 +1419,9 @@ try {
                 </select>
             </div>
             <div class="toggle-switch-container">
-                <label for="autoParseToggle">Enable Smart Auto-Parsing:</label>
+                <label for="smartParseToggle">Enable Smart Auto-Parsing:</label>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="autoParseToggle" checked>
+                    <input type="checkbox" id="smartParseToggle" checked>
                     <span class="slider"></span>
                 </label>
             </div>
@@ -3242,7 +3242,7 @@ try {
                     const lines = block.split('\n').map(l => l.trim());
                     const parcelData = {};
                     currentParserFields.forEach((field, index) => {
-                        if (lines[index]) parcelData[field.id] = lines[index];
+             if (lines[index]) parcelData[field.id] = lines[index];
                     });
                     return parcelData;
                 });
