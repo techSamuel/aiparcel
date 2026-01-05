@@ -23,9 +23,7 @@ define('SMTP_FROM_NAME', 'AiParcel');      // The "From" name
 define('ADMIN_NOTIFICATION_EMAIL', 'rodalsoft@gmail.com'); // Email for purchase notifications
 
 // Google OAuth Configuration
-// Get these from: https://console.cloud.google.com/apis/credentials
-define('GOOGLE_CLIENT_ID', '1077647211285-fqdquekcouh2vdqelemcuagd0bia43hq.apps.googleusercontent.com');
-define('GOOGLE_CLIENT_SECRET', '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');
+// Client ID and Secret are now managed via the Admin Panel -> Settings
 define('GOOGLE_REDIRECT_URI', APP_URL . '/api/google-auth.php');
 
 

@@ -2073,6 +2073,8 @@ try {
 
             await renderPlanStatus();
 
+            initSmartParseToggle(); // --- NEW: Init toggle state ---
+
             currentParserFields = (data.parserSettings !== null && typeof data.parserSettings !== 'undefined')
                 ? data.parserSettings  // Use saved settings (even if it's an empty [])
                 : [...DEFAULT_PARSER_FIELDS];
@@ -2603,6 +2605,36 @@ try {
             $('#updatePasswordInput').val('');
             $('#profile-modal').show();
         });
+
+        // --- NEW: Persist Smart Auto-Parsing Toggle ---
+        // 1. Initialize Toggle State on App Load
+        function initSmartParseToggle() {
+            const toggle = document.getElementById('smartParseToggle');
+            if (currentUser && currentUser.parserSettings && typeof currentUser.parserSettings.smart_parsing !== 'undefined') {
+                 toggle.checked = currentUser.parserSettings.smart_parsing;
+            } else {
+                 // Default to checked if not set
+                 toggle.checked = true;
+            }
+        }
+        
+        // 2. Add Change Listener to Save State
+        document.getElementById('smartParseToggle').addEventListener('change', async function() {
+            const isChecked = this.checked;
+            
+            // Get existing settings or create new object
+            let currentSettings = currentUser.parserSettings || {};
+            currentSettings.smart_parsing = isChecked;
+            currentUser.parserSettings = currentSettings; // Update local user object immediately
+
+            try {
+                await apiCall('save_parser_settings', { settings: currentSettings });
+                console.log('Smart parse preference saved:', isChecked);
+            } catch (e) {
+                console.error('Failed to save smart parse preference:', e);
+            }
+        });
+        // --- END NEW ---
 
         // Store Modal Logic
         $('#store-modal').on('click', '#addStoreBtn', async function () {

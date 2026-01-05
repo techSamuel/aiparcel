@@ -23,9 +23,7 @@ define('SMTP_PORT', 587);
 define('SMTP_FROM_NAME', 'AiParcel');
 
 // Google OAuth Configuration
-// Get these from: https://console.cloud.google.com/
-define('GOOGLE_CLIENT_ID', 'your-google-client-id.apps.googleusercontent.com');
-define('GOOGLE_CLIENT_SECRET', 'your-google-client-secret');
+// Client ID and Secret are managed via Admin Panel
 define('GOOGLE_REDIRECT_URI', APP_URL . '/api/google-auth.php');
 
 // AI API Keys (if applicable)

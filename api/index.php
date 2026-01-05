@@ -383,10 +383,10 @@ function load_user_data($user_id, $pdo)
         // --- THIS IS THE FIX ---
         // It now sends 'null' if the DB is NULL,
         // and sends '[]' if the DB has '[]'
-        if ($userData['parser_settings'] !== null) {
-            $response['parserSettings'] = json_decode($userData['parser_settings']);
+        if (!empty($userData['parser_settings'])) {
+            $response['parserSettings'] = json_decode($userData['parser_settings'], true);
         } else {
-            $response['parserSettings'] = null; // Send null, not []
+            $response['parserSettings'] = []; // Send empty array if null
         }
         // --- END OF FIX ---
 
