@@ -6,7 +6,7 @@ define('DB_PASS', '$zUuj;eX1By');
 define('DB_NAME', 'u374415227_aiparcel');
 
 // Email Verification URL
-define('APP_URL', 'https://aiparcel.site'); // Change this to your domain
+define('APP_URL', 'https://courier.aiparcel.site'); // Change this to your domain
 
 
 
