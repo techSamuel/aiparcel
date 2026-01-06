@@ -446,11 +446,42 @@ function add_or_update_store($user_id, $input, $pdo)
  */
 function parseWithAi($user_id, $input, $pdo)
 {
-    // --- 1. Check premium access ---
-    $stmt_user_plan = $pdo->prepare("SELECT p.can_parse_ai FROM users u JOIN plans p ON u.plan_id = p.id WHERE u.id = ?");
+    // --- 1. Check premium access & limits ---
+    $stmt_user_plan = $pdo->prepare("
+        SELECT 
+            p.can_parse_ai, 
+            p.order_limit_daily, 
+            p.order_limit_monthly,
+            u.plan_expiry_date, 
+            u.daily_order_count, 
+            u.monthly_order_count
+        FROM users u 
+        JOIN plans p ON u.plan_id = p.id 
+        WHERE u.id = ?
+    ");
     $stmt_user_plan->execute([$user_id]);
-    if (!$stmt_user_plan->fetchColumn()) {
+    $user_data = $stmt_user_plan->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user_data || !$user_data['can_parse_ai']) {
         json_response(['error' => 'AI features are not available on your current plan.'], 403);
+    }
+
+    // Check Plan Expiry
+    if (!empty($user_data['plan_expiry_date'])) {
+        try {
+            if (new DateTime($user_data['plan_expiry_date']) < new DateTime()) {
+                json_response(['error' => 'Your subscription plan has expired. Please upgrade.'], 403);
+            }
+        } catch (Exception $e) { /* Ignore invalid date format issues */
+        }
+    }
+
+    // Check Order Limits (Block parsing if limit reached)
+    if ($user_data['order_limit_daily'] > 0 && $user_data['daily_order_count'] >= $user_data['order_limit_daily']) {
+        json_response(['error' => 'Daily order limit reached. You cannot parse more parcels today.'], 403);
+    }
+    if ($user_data['order_limit_monthly'] > 0 && $user_data['monthly_order_count'] >= $user_data['order_limit_monthly']) {
+        json_response(['error' => 'Monthly order limit reached. You cannot parse more parcels this month.'], 403);
     }
 
     // --- 2. Get Gemini API key (MODIFIED BLOCK) ---
@@ -479,6 +510,10 @@ function parseWithAi($user_id, $input, $pdo)
     $raw_text = trim($input['rawText'] ?? '');
     if (empty($raw_text)) {
         json_response(['error' => 'No text was provided for parsing.'], 400);
+    }
+    // Limit input to approx 50 parcels (15000 chars)
+    if (strlen($raw_text) > 15000) {
+        json_response(['error' => 'Input too large. Maximum 50 parcels allowed per request.'], 400);
     }
 
     // --- 4. Build prompt ---
