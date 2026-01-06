@@ -4,6 +4,7 @@ session_set_cookie_params(0, '/');
 session_start();
 use PHPMailer\PHPMailer\PHPMailer;
 require_once 'config.php';
+require_once 'func_email.php';
 use PHPMailer\PHPMailer\Exception;
 
 // Decode JSON input from the request body
@@ -75,6 +76,15 @@ switch ($action) {
             if ($stmt_check->rowCount() == 0) {
                 $pdo->exec("ALTER TABLE users ADD COLUMN extra_order_limit INT DEFAULT 0 AFTER monthly_order_count");
                 $pdo->exec("ALTER TABLE users ADD COLUMN extra_ai_parsed_limit INT DEFAULT 0 AFTER monthly_ai_parsed_count");
+            }
+
+            // AUTO-MIGRATE: Alert Columns
+            $stmt_check_alerts = $pdo->query("SHOW COLUMNS FROM users LIKE 'alert_usage_order_75'");
+            if ($stmt_check_alerts->rowCount() == 0) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN alert_usage_order_75 TINYINT DEFAULT 0");
+                $pdo->exec("ALTER TABLE users ADD COLUMN alert_usage_order_90 TINYINT DEFAULT 0");
+                $pdo->exec("ALTER TABLE users ADD COLUMN alert_usage_ai_75 TINYINT DEFAULT 0");
+                $pdo->exec("ALTER TABLE users ADD COLUMN alert_usage_ai_90 TINYINT DEFAULT 0");
             }
         } catch (Exception $e) { /* Ignore errors if columns exist or permissions fail */
         }
@@ -474,7 +484,10 @@ function parseWithAi($user_id, $input, $pdo)
             u.monthly_ai_parsed_count,
             u.last_reset_date,
             u.extra_order_limit,
-            u.extra_ai_parsed_limit
+            u.extra_ai_parsed_limit,
+            u.email,
+            u.alert_usage_ai_75,
+            u.alert_usage_ai_90
         FROM users u 
         JOIN plans p ON u.plan_id = p.id 
         WHERE u.id = ?
@@ -499,7 +512,7 @@ function parseWithAi($user_id, $input, $pdo)
         if ($should_reset_monthly) {
             $updates['monthly_order_count'] = 0;
             $updates['monthly_ai_parsed_count'] = 0;
-            $sql_set .= ", monthly_order_count = 0, monthly_ai_parsed_count = 0";
+            $sql_set .= ", monthly_order_count = 0, monthly_ai_parsed_count = 0, alert_usage_order_75 = 0, alert_usage_order_90 = 0, alert_usage_ai_75 = 0, alert_usage_ai_90 = 0";
             // Update local var for immediate check
             $user_data['monthly_ai_parsed_count'] = 0;
         }
@@ -659,6 +672,31 @@ EOT;
     if ($count > 0) {
         // Increment by NUMBER of parcels, not just 1 request
         $pdo->prepare("UPDATE users SET monthly_ai_parsed_count = monthly_ai_parsed_count + ? WHERE id = ?")->execute([$count, $user_id]);
+
+        // --- Usage Alerts (AI) ---
+        if ($effective_ai_limit > 0) {
+            $new_ai_usage = $user_data['monthly_ai_parsed_count'] + $count;
+            $ai_percent = ($new_ai_usage / $effective_ai_limit) * 100;
+            $alert_subject = '';
+            $alert_col = '';
+
+            if ($ai_percent >= 90 && empty($user_data['alert_usage_ai_90'])) {
+                $alert_subject = "Action Required: 90% AI Limit Reached";
+                $alert_col = 'alert_usage_ai_90';
+            } elseif ($ai_percent >= 75 && empty($user_data['alert_usage_ai_75'])) {
+                $alert_subject = "Usage Alert: 75% AI Limit Reached";
+                $alert_col = 'alert_usage_ai_75';
+            }
+
+            if ($alert_col) {
+                $pdo->prepare("UPDATE users SET $alert_col = 1 WHERE id = ?")->execute([$user_id]);
+                $msg = "<p>You have used <strong>" . number_format($ai_percent) . "%</strong> of your monthly AI parsing limit.</p><p>Used: $new_ai_usage / $effective_ai_limit</p><p>Please upgrade your plan if you need more capacity.</p>";
+                $email_html = wrapInEmailTemplate($alert_subject, $msg, $pdo);
+                if (!empty($user_data['email'])) {
+                    sendSystemEmail($user_data['email'], $alert_subject, $email_html);
+                }
+            }
+        }
 
         // Log to History
         $stmt_hist = $pdo->prepare("INSERT INTO parses (user_id, method, data, timestamp) VALUES (?, 'AI', ?, NOW())");
@@ -836,7 +874,12 @@ function create_order($user_id, $input, $pdo)
 
         if ($plan['validity_days'] > 1 && $days_since_reset >= $plan['validity_days']) {
             $user['monthly_order_count'] = 0;
-            $pdo->prepare("UPDATE users SET monthly_order_count = 0, monthly_ai_parsed_count = 0, last_reset_date = ? WHERE id = ?")->execute([$today, $user_id]);
+            $user['monthly_ai_parsed_count'] = 0;
+            $user['alert_usage_order_75'] = 0;
+            $user['alert_usage_order_90'] = 0;
+            $user['alert_usage_ai_75'] = 0;
+            $user['alert_usage_ai_90'] = 0;
+            $pdo->prepare("UPDATE users SET monthly_order_count = 0, monthly_ai_parsed_count = 0, alert_usage_order_75 = 0, alert_usage_order_90 = 0, alert_usage_ai_75 = 0, alert_usage_ai_90 = 0, last_reset_date = ? WHERE id = ?")->execute([$today, $user_id]);
         } else {
             $pdo->prepare("UPDATE users SET last_reset_date = ? WHERE id = ?")->execute([$today, $user_id]);
         }
@@ -983,6 +1026,32 @@ function create_order($user_id, $input, $pdo)
         $pdo->prepare("UPDATE users SET daily_order_count = daily_order_count + ?, monthly_order_count = monthly_order_count + ? WHERE id = ?")
             ->execute([$order_count_in_request, $order_count_in_request, $user_id]);
         // --- END: INCREMENT ORDER COUNTERS ---
+
+        // --- Usage Alerts (Order) ---
+        $effective_limit = $plan['order_limit_monthly'] + ($user['extra_order_limit'] ?? 0);
+        if ($effective_limit > 0) {
+            $new_count = $user['monthly_order_count'] + $order_count_in_request;
+            $percent = ($new_count / $effective_limit) * 100;
+            $alert_col = '';
+            $subject = '';
+
+            if ($percent >= 90 && empty($user['alert_usage_order_90'])) {
+                $alert_col = 'alert_usage_order_90';
+                $subject = 'Action Required: 90% Order Limit Reached';
+            } elseif ($percent >= 75 && empty($user['alert_usage_order_75'])) {
+                $alert_col = 'alert_usage_order_75';
+                $subject = 'Usage Alert: 75% Order Limit Reached';
+            }
+
+            if ($alert_col) {
+                $pdo->prepare("UPDATE users SET $alert_col = 1 WHERE id = ?")->execute([$user_id]);
+                $msg = "<p>You have used <strong>" . number_format($percent) . "%</strong> of your monthly order limit.</p><p>Used: $new_count / $effective_limit</p>";
+                $html = wrapInEmailTemplate($subject, $msg, $pdo);
+                if (!empty($user['email'])) {
+                    sendSystemEmail($user['email'], $subject, $html);
+                }
+            }
+        }
 
         json_response($final_response);
 
