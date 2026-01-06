@@ -138,7 +138,7 @@ async function renderPlanStatus() {
         }
         if (status.plan_expiry_date) {
             // Force Asia/Dhaka timezone
-            const expiry = new Date(status.plan_expiry_date).toLocaleDateString('en-US', { timeZone: 'Asia/Dhaka' });
+            const expiry = new Date(status.plan_expiry_date + 'T00:00:00+06:00').toLocaleDateString('en-US', { timeZone: 'Asia/Dhaka' });
             planStatusView.innerHTML = `<h3>Current Plan: <strong>${status.plan_name}</strong></h3>${usageHTML}<p>Expires on: <strong>${expiry}</strong></p>`;
         } else {
             planStatusView.innerHTML = `<h3>Current Plan: <strong>${status.plan_name}</strong></h3>${usageHTML}<p>Expires on: <strong>N/A</strong></p>`;
@@ -731,7 +731,7 @@ async function loadHistory(type, container) {
         if (!history || history.length === 0) { $(container).html("No history found."); return; }
         $(container).empty();
         history.forEach(item => {
-            const date = new Date(item.timestamp).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' });
+            const date = new Date(item.timestamp.replace(' ', 'T') + '+06:00').toLocaleString('en-US', { timeZone: 'Asia/Dhaka' });
             let title = '';
             if (type === 'parses') title = `Method: ${item.method} | ${safeParse(item.data).length || 0} items`;
             else title = `Store: ${userCourierStores[item.store_id]?.storeName || 'N/A'}`;
@@ -1063,7 +1063,7 @@ openSubscriptionHistoryModalBtn.addEventListener('click', async () => {
             apiCall('get_my_subscriptions').then(res => callback({ data: res })).catch(err => { console.error(err); callback({ data: [] }); });
         },
         columns: [
-            { title: "Date", data: "created_at", render: d => new Date(d).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
+            { title: "Date", data: "created_at", render: d => new Date(d.replace(' ', 'T') + '+06:00').toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
             { title: "Plan", data: "plan_name" },
             { title: "Amount", data: "amount_paid" },
             { title: "Payment Method", data: "payment_method_name" },
@@ -1074,7 +1074,7 @@ openSubscriptionHistoryModalBtn.addEventListener('click', async () => {
                 }
             }
         ],
-        order: [[0, 'desc']]
+        order: [[0, 'asc']]
     });
     $('#subscription-history-modal .close-btn').on('click', function () { $('#subscription-history-modal').hide(); });
 });

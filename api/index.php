@@ -117,7 +117,7 @@ switch ($action) {
             JOIN plans p ON s.plan_id = p.id
             JOIN payment_methods pm ON s.payment_method_id = pm.id
             WHERE s.user_id = ?
-            ORDER BY s.created_at DESC
+            ORDER BY s.created_at ASC
         ");
         $stmt->execute([$user_id]);
         json_response($stmt->fetchAll());
