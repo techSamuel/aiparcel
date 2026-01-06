@@ -76,13 +76,32 @@ if (!defined('APP_URL')) {
 
         <div id="verification-view" style="display:none;">
             <h1>Verify Your Email</h1>
-            <p>A verification link has been sent to your email address. Please check your inbox (and spam folder)
-                and
-                click the link to activate your account.</p>
+            <p>Please enter the 6-digit code sent to your email address to activate your account.</p>
+
+            <div class="auth-form">
+                <div class="input-group">
+                    <span class="input-icon">🔢</span>
+                    <input type="text" id="verificationCode" placeholder="123456" maxlength="6"
+                        style="text-align: center; font-size: 18px; letter-spacing: 4px; font-weight: bold;">
+                </div>
+
+                <button id="submitVerificationBtn"
+                    style="width: 100%; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; background-color: var(--primary-color); color: white; margin-top: 10px;">
+                    Verify Code <span class="loader"></span>
+                </button>
+            </div>
+
+            <p style="margin-top: 20px; font-size: 14px; color: #666;">Didn't receive the code?</p>
             <button id="resendVerificationBtn"
-                style="width:100%; padding: 12px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer;">Resend
-                Verification Email<span class="loader"></span></button>
+                style="background: none; border: none; color: var(--primary-color); cursor: pointer; text-decoration: underline; font-weight: 500;">
+                Resend Verification Code <span class="loader"></span>
+            </button>
+
             <div id="verification-message" class="message" style="display:none;"></div>
+
+            <button id="backToLoginFromVerify"
+                style="background:none; border:none; color:var(--dark-gray); margin-top: 20px; cursor: pointer;">&larr;
+                Back to Login</button>
         </div>
 
         <div id="reset-password-request-view" style="display:none;">
