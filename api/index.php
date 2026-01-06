@@ -1310,29 +1310,47 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
 
         if (function_exists($functionName)) {
             try {
-                $data = $functionName($phone);
-                if ($data && is_array($data) && !isset($data['error'])) {
-                    // Check if result looks suspicious (0% success on all)
-                    if (isSuspiciousResult($data)) {
-                        error_log("Server {$server['url']} returned suspicious data (0% success). Verifying with next server...");
-                        // Save this result in case all servers return the same
-                        if ($suspiciousData === null) {
-                            $suspiciousData = $data;
-                            $suspiciousServer = $server['url'];
-                        }
-                        continue; // Try next server to verify
-                    }
+                $data = @$functionName($phone); // Suppress warnings
 
-                    // Success with trustworthy data!
-                    json_response($data);
-                    return;
-                } else {
-                    $lastError = $data['error'] ?? 'No data returned';
-                    error_log("Server {$server['url']} failed: $lastError");
+                // Validate the response is a valid array with courier data
+                if (!is_array($data)) {
+                    $lastError = 'Server returned invalid data type';
+                    error_log("Server {$server['url']} returned non-array: " . gettype($data));
+                    continue;
                 }
-            } catch (Exception $e) {
+
+                if (isset($data['error'])) {
+                    $lastError = $data['error'];
+                    error_log("Server {$server['url']} returned error: $lastError");
+                    continue;
+                }
+
+                if (empty($data)) {
+                    $lastError = 'Server returned empty data';
+                    error_log("Server {$server['url']} returned empty array");
+                    continue;
+                }
+
+                // Check if result looks suspicious (0% success on all)
+                if (isSuspiciousResult($data)) {
+                    error_log("Server {$server['url']} returned suspicious data (0% success). Verifying with next server...");
+                    // Save this result in case all servers return the same
+                    if ($suspiciousData === null) {
+                        $suspiciousData = $data;
+                        $suspiciousServer = $server['url'];
+                    }
+                    continue; // Try next server to verify
+                }
+
+                // Success with trustworthy data!
+                json_response($data);
+                return;
+
+            } catch (Throwable $e) {
+                // Catch all errors including TypeError, Error, etc.
                 $lastError = $e->getMessage();
                 error_log("Server {$server['url']} exception: $lastError");
+                continue;
             }
         } else {
             error_log("Function {$functionName} not found");
