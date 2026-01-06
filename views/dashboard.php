@@ -95,8 +95,12 @@ if (!defined('APP_URL')) {
                 </select>
                 <button id="applyCustomNoteBtn" class="btn-sm btn-primary">Apply to All</button>
             </div>
-            <div style="font-size: 11px; color: #666; margin-top: 4px;">
-                Use variables to dynamically insert data from each parcel. Appends/Replaces the note field.
+            <div
+                style="font-size: 11px; color: #666; margin-top: 4px; display: flex; align-items: center; justify-content: space-between;">
+                <span>Use variables to dynamically insert data. Appends/Replaces note.</span>
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="autoApplyNote"> Auto-apply to new parcels
+                </label>
             </div>
         </div>
 
