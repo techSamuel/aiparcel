@@ -11,6 +11,7 @@
             destroy: true,
             ajax: (d, cb) => apiCall('list_users').then(res => cb({ data: res })),
             columns: [
+                { title: "ID", data: "id" },
                 { title: "Joined", data: "created_at", render: d => new Date(d).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
                 { title: "Email", data: "email" }, { title: "Plan", data: "plan_name" },
                 { title: "Verified", data: "is_verified", render: d => d ? '✅' : '❌' },
