@@ -2076,12 +2076,36 @@ try {
 
             await renderPlanStatus();
 
-            initSmartParseToggle(); // --- NEW: Init toggle state ---
+            // --- Handle Parser Settings (Legacy Array vs New Object) ---
+            let savedSettings = data.parserSettings;
+            let fields = [...DEFAULT_PARSER_FIELDS];
+            let smartParsingEnabled = true;
 
-            currentParserFields = (Array.isArray(data.parserSettings) && data.parserSettings.length > 0)
-                ? data.parserSettings  // Use saved settings
-                : [...DEFAULT_PARSER_FIELDS];
-            renderParserFields();
+            if (savedSettings) {
+                if (Array.isArray(savedSettings)) {
+                    // Legacy format: just an array of fields
+                    if (savedSettings.length > 0) fields = savedSettings;
+                } else if (typeof savedSettings === 'object' && savedSettings !== null) {
+                    // New format: { fields: [], smart_parsing: bool }
+                    if (Array.isArray(savedSettings.fields) && savedSettings.fields.length > 0) {
+                        fields = savedSettings.fields;
+                    }
+                    if (typeof savedSettings.smart_parsing !== 'undefined') {
+                        smartParsingEnabled = savedSettings.smart_parsing;
+                    }
+                }
+            }
+
+            currentParserFields = fields;
+            renderParserFields(); // Render the fields
+
+            // Initialize Toggle State
+            const toggle = document.getElementById('smartParseToggle');
+            if (toggle) {
+                toggle.checked = smartParsingEnabled;
+                // Trigger placeholder update based on initial state
+                updateRawTextPlaceholder();
+            }
         }
 
 
@@ -2610,32 +2634,10 @@ try {
         });
 
         // --- NEW: Persist Smart Auto-Parsing Toggle ---
-        // 1. Initialize Toggle State on App Load
-        function initSmartParseToggle() {
-            const toggle = document.getElementById('smartParseToggle');
-            if (currentUser && currentUser.parserSettings && typeof currentUser.parserSettings.smart_parsing !== 'undefined') {
-                toggle.checked = currentUser.parserSettings.smart_parsing;
-            } else {
-                // Default to checked if not set
-                toggle.checked = true;
-            }
-        }
-
-        // 2. Add Change Listener to Save State
+        // Change Listener to Save State
         document.getElementById('smartParseToggle').addEventListener('change', async function () {
-            const isChecked = this.checked;
-
-            // Get existing settings or create new object
-            let currentSettings = currentUser.parserSettings || {};
-            currentSettings.smart_parsing = isChecked;
-            currentUser.parserSettings = currentSettings; // Update local user object immediately
-
-            try {
-                await apiCall('save_parser_settings', { settings: currentSettings });
-                console.log('Smart parse preference saved:', isChecked);
-            } catch (e) {
-                console.error('Failed to save smart parse preference:', e);
-            }
+            updateRawTextPlaceholder(); // Update placeholder immediately
+            await saveParserSettings(); // Save new state to DB
         });
         // --- END NEW ---
 
@@ -2937,8 +2939,14 @@ try {
         // MODIFIED: Saves settings to the database via API
         async function saveParserSettings() {
             try {
-                // Save the current state of the global variable
-                await apiCall('save_parser_settings', { settings: currentParserFields });
+                const toggle = document.getElementById('smartParseToggle');
+                const settingsPayload = {
+                    fields: currentParserFields,
+                    smart_parsing: toggle ? toggle.checked : true
+                };
+
+                // Save the combined state
+                await apiCall('save_parser_settings', { settings: settingsPayload });
                 // console.log("Parser settings saved to DB.");
             } catch (error) {
                 console.error("Failed to save parser settings:", error);
@@ -2997,10 +3005,7 @@ try {
                 availableFieldsContainer.appendChild(tile);
             });
             setupDragAndDrop();
-            updateRawTextPlaceholder();
-            document.getElementById('smartParseToggle').addEventListener('change', () => {
-                updateRawTextPlaceholder();
-            });
+            updateRawTextPlaceholder(); // Initial placeholder set
         }
 
 
