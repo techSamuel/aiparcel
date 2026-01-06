@@ -756,6 +756,12 @@ $('#history-modal').on('click', '.details-btn', function () {
         }
         $('#details-title').text('Details');
         $('#details-content').text(JSON.stringify(content, null, 2));
+        $('#details-content').css({
+            'white-space': 'pre-wrap',
+            'word-break': 'break-all',
+            'max-height': '70vh',
+            'overflow-y': 'auto'
+        });
         $('#details-modal').show();
     } catch (e) {
         console.error("Details Error:", e);
