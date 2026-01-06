@@ -1251,6 +1251,10 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
             'url' => 'https://elitemart.com.bd/fraud-check',
             'function' => 'tryFraudCheckElite'
         ],
+        [
+            'url' => 'https://onecodesoft.com/fraudchecker',
+            'function' => 'tryFraudCheckOnecodesoft'
+        ],
     ];
 
     // Helper: test server latency
@@ -1462,6 +1466,82 @@ function tryFraudCheckElite($phone)
     return tryFraudCheckLink($phone);
 }
 
+function tryFraudCheckOnecodesoft($phone)
+{
+    $url = 'https://onecodesoft.com/fraudchecker?phone=' . urlencode($phone);
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0');
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $html = curl_exec($ch);
+    curl_close($ch);
+
+    if (!$html) {
+        return ['error' => 'Onecodesoft returned empty response'];
+    }
+
+    $dom = new DOMDocument();
+    @$dom->loadHTML($html);
+    $xpath = new DOMXPath($dom);
+
+    // Find the table with class 'modern-table'
+    $rows = $xpath->query("//table[contains(@class, 'modern-table')]/tbody/tr");
+
+    $courier_data = [];
+    foreach ($rows as $row) {
+        $cells = $row->getElementsByTagName('td');
+        if ($cells->length >= 5) {
+            // Get courier name (first cell)
+            $courierCell = $cells->item(0);
+            $courier_name = trim($courierCell->textContent);
+
+            // Get stats from other cells using data-label attributes
+            $orders = 0;
+            $delivered = 0;
+            $cancelled = 0;
+            $cancelRate = '0%';
+
+            foreach ($cells as $cell) {
+                $label = $cell->getAttribute('data-label');
+                $value = trim($cell->textContent);
+
+                switch ($label) {
+                    case 'মোট অর্ডার':
+                        $orders = (int) preg_replace('/[^0-9]/', '', $value);
+                        break;
+                    case 'সফল':
+                        $delivered = (int) preg_replace('/[^0-9]/', '', $value);
+                        break;
+                    case 'বাতিল':
+                        $cancelled = (int) preg_replace('/[^0-9]/', '', $value);
+                        break;
+                    case 'রিটার্ন রেট':
+                        $cancelRate = $value;
+                        break;
+                }
+            }
+
+            // Skip Pathao Rating row or any row without proper courier name
+            if (empty($courier_name) || stripos($courier_name, 'rating') !== false) {
+                continue;
+            }
+
+            $courier_data[] = [
+                'courier' => $courier_name,
+                'orders' => $orders,
+                'delivered' => $delivered,
+                'cancelled' => $cancelled,
+                'cancel_rate' => $cancelRate,
+                'server' => 'https://onecodesoft.com/fraudchecker'
+            ];
+        }
+    }
+
+    return empty($courier_data) ? ['error' => 'No data found on Onecodesoft'] : $courier_data;
+}
 
 
 
