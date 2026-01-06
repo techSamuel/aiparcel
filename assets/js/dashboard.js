@@ -273,13 +273,18 @@ async function checkFraudRisk(buttonElement) {
         });
         tableHTML += '</tbody></table>';
 
+        // Extract server source from data (all rows should have same server)
+        const serverSource = data[0]?.server || 'Unknown';
+        const serverName = serverSource.replace(/https?:\/\//, '').split('/')[0];
+
         const uniqueId = `details-${phoneNumber}-${Date.now()}`;
         const finalHTML = `
             <div style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9;">
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <span style="font-weight: 600; font-size: 13px;">
                         Delivery Success Ratio: 
                         <strong style="color: ${ratioColor}; font-size: 15px;">${successRatio}%</strong>
+                        <span style="font-size: 11px; color: #888; margin-left: 8px;">(${serverName})</span>
                     </span>
                     <button class="toggle-details-btn btn-secondary btn-sm" data-target="#${uniqueId}" style="white-space: nowrap;">Show Details</button>
                 </div>
