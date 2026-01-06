@@ -48,7 +48,6 @@ try {
                     <p>You have been automatically moved to the <strong>Free Plan</strong>.</p>
                     <p>To continue using premium limits and features, please <a href='" . APP_URL . "'>upgrade your plan</a>.</p>";
             $html = wrapInEmailTemplate($subject, $msg, $pdo);
-            $html = wrapInEmailTemplate($subject, $msg, $pdo);
             $sent = sendSystemEmail($user['email'], $subject, $html);
 
             $log[] = "Demoted User ID {$user['id']} to Free. Email Sent: " . ($sent ? 'Yes' : 'No');
@@ -71,13 +70,81 @@ try {
                      <p>Please renew your subscription now to avoid service interruption or demotion to the Free plan.</p>
                      <p><a href='" . APP_URL . "' class='button'>Renew Subscription</a></p>";
             $html = wrapInEmailTemplate($subject, $msg, $pdo);
-            $html = wrapInEmailTemplate($subject, $msg, $pdo);
             $sent = sendSystemEmail($user['email'], $subject, $html);
             $log[] = "Sent $days-day warning to User ID {$user['id']}. Email Sent: " . ($sent ? 'Yes' : 'No');
         }
     }
 
-    echo json_encode(['success' => true, 'log' => $log]);
+    // --- 3. Usage Alerts (75% / 90%) Failsafe ---
+    $stmt_usage = $pdo->query("
+        SELECT u.id, u.email, u.display_name, 
+               u.monthly_order_count, u.extra_order_limit, u.monthly_ai_parsed_count, u.extra_ai_parsed_limit,
+               u.alert_usage_order_75, u.alert_usage_order_90, u.alert_usage_ai_75, u.alert_usage_ai_90,
+               p.monthly_order_limit, p.monthly_ai_parsed_limit
+        FROM users u
+        JOIN plans p ON u.plan_id = p.id
+        WHERE u.alert_usage_order_90 = 0 OR u.alert_usage_ai_90 = 0 OR u.alert_usage_order_75 = 0 OR u.alert_usage_ai_75 = 0
+    ");
+
+    while ($row = $stmt_usage->fetch(PDO::FETCH_ASSOC)) {
+        // --- Order Usage ---
+        $total_order_limit = $row['monthly_order_limit'] + $row['extra_order_limit'];
+        if ($total_order_limit > 0) {
+            $order_percent = ($row['monthly_order_count'] / $total_order_limit) * 100;
+
+            // 75% Order Alert
+            if ($order_percent >= 75 && $row['alert_usage_order_75'] == 0) {
+                $subject = "Usage Alert: 75% Order Limit Reached";
+                $msg = "<p>Hello " . htmlspecialchars($row['display_name']) . ",</p><p>You have used <strong>75%</strong> of your monthly order limit.</p><p><a href='" . APP_URL . "'>Check Dashboard</a></p>";
+                $html = wrapInEmailTemplate($subject, $msg, $pdo);
+                $sent = sendSystemEmail($row['email'], $subject, $html);
+                if ($sent) {
+                    $pdo->prepare("UPDATE users SET alert_usage_order_75 = 1 WHERE id = ?")->execute([$row['id']]);
+                    $log[] = "Sent 75% Order Alert to User ID {$row['id']}.";
+                }
+            }
+            // 90% Order Alert
+            if ($order_percent >= 90 && $row['alert_usage_order_90'] == 0) {
+                $subject = "Usage Alert: 90% Order Limit Reached";
+                $msg = "<p>Hello " . htmlspecialchars($row['display_name']) . ",</p><p>You have used <strong>90%</strong> of your monthly order limit. Please upgrade soon.</p><p><a href='" . APP_URL . "'>Upgrade Now</a></p>";
+                $html = wrapInEmailTemplate($subject, $msg, $pdo);
+                $sent = sendSystemEmail($row['email'], $subject, $html);
+                if ($sent) {
+                    $pdo->prepare("UPDATE users SET alert_usage_order_90 = 1 WHERE id = ?")->execute([$row['id']]);
+                    $log[] = "Sent 90% Order Alert to User ID {$row['id']}.";
+                }
+            }
+        }
+
+        // --- AI Usage ---
+        $total_ai_limit = $row['monthly_ai_parsed_limit'] + $row['extra_ai_parsed_limit'];
+        if ($total_ai_limit > 0) {
+            $ai_percent = ($row['monthly_ai_parsed_count'] / $total_ai_limit) * 100;
+
+            // 75% AI Alert
+            if ($ai_percent >= 75 && $row['alert_usage_ai_75'] == 0) {
+                $subject = "Usage Alert: 75% AI Parsing Limit Reached";
+                $msg = "<p>Hello " . htmlspecialchars($row['display_name']) . ",</p><p>You have used <strong>75%</strong> of your monthly AI parsing limit.</p><p><a href='" . APP_URL . "'>Check Dashboard</a></p>";
+                $html = wrapInEmailTemplate($subject, $msg, $pdo);
+                $sent = sendSystemEmail($row['email'], $subject, $html);
+                if ($sent) {
+                    $pdo->prepare("UPDATE users SET alert_usage_ai_75 = 1 WHERE id = ?")->execute([$row['id']]);
+                    $log[] = "Sent 75% AI Alert to User ID {$row['id']}.";
+                }
+            }
+            // 90% AI Alert
+            if ($ai_percent >= 90 && $row['alert_usage_ai_90'] == 0) {
+                $subject = "Usage Alert: 90% AI Parsing Limit Reached";
+                $msg = "<p>Hello " . htmlspecialchars($row['display_name']) . ",</p><p>You have used <strong>90%</strong> of your monthly AI parsing limit.</p><p><a href='" . APP_URL . "'>Upgrade Now</a></p>";
+                $html = wrapInEmailTemplate($subject, $msg, $pdo);
+                $sent = sendSystemEmail($row['email'], $subject, $html);
+                if ($sent) {
+                    $pdo->prepare("UPDATE users SET alert_usage_ai_90 = 1 WHERE id = ?")->execute([$row['id']]);
+                    $log[] = "Sent 90% AI Alert to User ID {$row['id']}.";
+                }
+            }
+        }
+    }
 
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

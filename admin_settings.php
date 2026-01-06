@@ -57,7 +57,8 @@
     <div style="margin-bottom: 20px;">
         <h3>Run Daily Maintenance (Cron)</h3>
         <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">Manually trigger the daily cron job. This will
-            check for expired plans (demote users) and send expiration warning emails.</p>
+            check for expired plans (demote users), send expiration warning emails, and <strong>send 75%/90% usage
+                warnings</strong> for Order/AI limits.</p>
         <button type="button" id="btnRunCron" class="btn-primary" style="background-color: #6c757d;">Run Daily
             Maintenance Now</button>
         <div id="cronOutput"
