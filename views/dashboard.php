@@ -191,4 +191,4 @@ if (!defined('APP_URL')) {
 </div>
 
 <script src="assets/js/utils.js"></script>
-<script src="assets/js/dashboard.js"></script>
+<script src="assets/js/dashboard.js?v=<?php echo time(); ?>"></script>
