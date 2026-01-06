@@ -26,8 +26,8 @@ $db_client_id = $settings['google_client_id'] ?? '';
 $db_client_secret = $settings['google_client_secret'] ?? '';
 
 // Fallback logic
-$client_id = !empty($db_client_id) ? $db_client_id : (defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '');
-$client_secret = !empty($db_client_secret) ? $db_client_secret : (defined('GOOGLE_CLIENT_SECRET') ? GOOGLE_CLIENT_SECRET : '');
+$client_id = !empty($db_client_id) ? trim($db_client_id) : (defined('GOOGLE_CLIENT_ID') ? trim(GOOGLE_CLIENT_ID) : '');
+$client_secret = !empty($db_client_secret) ? trim($db_client_secret) : (defined('GOOGLE_CLIENT_SECRET') ? trim(GOOGLE_CLIENT_SECRET) : '');
 
 if (empty($client_id) || empty($client_secret)) {
     die('Google Auth is not configured.');

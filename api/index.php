@@ -635,8 +635,17 @@ EOT;
     // --- 8. Return parsed JSON ---
     // --- 8. Return parsed JSON ---
 
-    // Increment AI Parsed Count
-    $pdo->prepare("UPDATE users SET monthly_ai_parsed_count = monthly_ai_parsed_count + 1 WHERE id = ?")->execute([$user_id]);
+    // --- 9. Update Usage & History ---
+    $count = is_array($parsed_json) ? count($parsed_json) : 0;
+
+    if ($count > 0) {
+        // Increment by NUMBER of parcels, not just 1 request
+        $pdo->prepare("UPDATE users SET monthly_ai_parsed_count = monthly_ai_parsed_count + ? WHERE id = ?")->execute([$count, $user_id]);
+
+        // Log to History
+        $stmt_hist = $pdo->prepare("INSERT INTO parses (user_id, method, data, timestamp) VALUES (?, 'AI', ?, NOW())");
+        $stmt_hist->execute([$user_id, json_encode($parsed_json)]);
+    }
 
     // Wrap in 'parses' key as frontend expects { parses: [...] }
     json_response(['parses' => is_array($parsed_json) ? $parsed_json : []]);
