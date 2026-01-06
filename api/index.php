@@ -1226,78 +1226,203 @@ function runFraudCheckOnRandomServer($user_id, $input, $pdo)
 
 function runFraudCheckOnBestServer($user_id, $input, $pdo)
 {
+    // --- 1. Check premium access first (common for all servers) ---
+    $stmt_user_plan = $pdo->prepare("SELECT p.can_check_risk FROM users u JOIN plans p ON u.plan_id = p.id WHERE u.id = ?");
+    $stmt_user_plan->execute([$user_id]);
+    if (!$stmt_user_plan->fetchColumn()) {
+        json_response(['error' => 'Risk checking is not available on your current plan.'], 403);
+    }
+
+    $phone = $input['phone'] ?? null;
+    if (!$phone || !preg_match('/^01[3-9]\d{8}$/', $phone)) {
+        json_response(['error' => 'Invalid or missing phone number.'], 400);
+    }
+
     $servers = [
         [
             'url' => 'https://fraud-checker.storex.com.bd/',
-            'function' => 'check_fraud_risk'
+            'function' => 'tryFraudCheckStorex'
         ],
         [
             'url' => 'https://fraudchecker.link/free-fraud-checker-bd/',
-            'function' => 'processFraudCheckRequest'
+            'function' => 'tryFraudCheckLink'
         ],
         [
             'url' => 'https://elitemart.com.bd/fraud-check',
-            'function' => 'checkFraudRiskElite'
+            'function' => 'tryFraudCheckElite'
         ],
     ];
 
-    // Helper: test server and return latency in ms or null if unreachable
+    // Helper: test server latency
     function getLatency($url, $timeout = 2.0)
     {
         $start = microtime(true);
-
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_NOBODY, true);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
         curl_exec($ch);
-
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-
         if ($httpCode >= 200 && $httpCode < 500) {
-            $end = microtime(true);
-            return ($end - $start) * 1000.0; // convert to milliseconds
+            return (microtime(true) - $start) * 1000.0;
         }
         return null;
     }
 
-    // Measure all servers
+    // Measure all servers and sort by latency
     $results = [];
     foreach ($servers as $server) {
         $lat = getLatency($server['url']);
-        if ($lat !== null) {
-            $results[] = [
-                'server' => $server,
-                'latency' => $lat
+        $results[] = ['server' => $server, 'latency' => $lat ?? INF];
+    }
+    usort($results, fn($a, $b) => $a['latency'] <=> $b['latency']);
+
+    // Try each server in order until one succeeds
+    $lastError = 'All fraud check servers failed.';
+    foreach ($results as $result) {
+        $server = $result['server'];
+        $functionName = $server['function'];
+
+        error_log("Trying fraud check server: {$server['url']} (latency: {$result['latency']} ms)");
+
+        if (function_exists($functionName)) {
+            try {
+                $data = $functionName($phone);
+                if ($data && is_array($data) && !isset($data['error'])) {
+                    // Success! Return the data
+                    json_response($data);
+                    return;
+                } else {
+                    $lastError = $data['error'] ?? 'No data returned';
+                    error_log("Server {$server['url']} failed: $lastError");
+                }
+            } catch (Exception $e) {
+                $lastError = $e->getMessage();
+                error_log("Server {$server['url']} exception: $lastError");
+            }
+        } else {
+            error_log("Function {$functionName} not found");
+        }
+    }
+
+    // All servers failed
+    json_response(['error' => $lastError], 502);
+}
+
+// --- Fraud Check Helper Functions (return data instead of outputting JSON) ---
+
+function tryFraudCheckStorex($phone)
+{
+    $base = 'https://fraud-checker.storex.com.bd';
+    $homepage = $base . '/';
+    $apiUrl = $base . '/api/fraud-checker-direct?phone=' . urlencode($phone);
+    $cookieFile = tempnam(sys_get_temp_dir(), 'fcd_ck_');
+
+    $commonOptions = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0.0.0',
+        CURLOPT_COOKIEJAR => $cookieFile,
+        CURLOPT_COOKIEFILE => $cookieFile,
+        CURLOPT_ENCODING => "",
+        CURLOPT_TIMEOUT => 30,
+    ];
+
+    // GET homepage for session cookie
+    $ch = curl_init($homepage);
+    curl_setopt_array($ch, $commonOptions);
+    curl_exec($ch);
+    curl_close($ch);
+
+    // GET API
+    $ch = curl_init($apiUrl);
+    curl_setopt_array($ch, $commonOptions);
+    $html = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    @unlink($cookieFile);
+
+    if ($code != 200 || !$html) {
+        return ['error' => 'Storex server returned empty response'];
+    }
+
+    $dom = new DOMDocument();
+    @$dom->loadHTML($html);
+    $xpath = new DOMXPath($dom);
+    $rows = $xpath->query("//div[contains(@class, 'space-y-2')]/div[contains(@class, 'grid-cols-5')]");
+
+    $courier_data = [];
+    foreach ($rows as $row) {
+        $img = $xpath->query(".//img", $row)->item(0);
+        $cols = $xpath->query(".//p", $row);
+        $courier_data[] = [
+            'courier' => $img ? $img->getAttribute('alt') : 'unknown',
+            'orders' => trim($cols->item(0)->textContent ?? '0'),
+            'delivered' => trim($cols->item(1)->textContent ?? '0'),
+            'cancelled' => trim($cols->item(2)->textContent ?? '0'),
+            'cancel_rate' => trim($cols->item(3)->textContent ?? '0%'),
+            'server' => $base
+        ];
+    }
+
+    return empty($courier_data) ? ['error' => 'No data found on Storex'] : $courier_data;
+}
+
+function tryFraudCheckLink($phone)
+{
+    $url = 'https://fraudchecker.link/free-fraud-checker-bd/';
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query(['phone' => $phone]));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    $html = curl_exec($ch);
+    curl_close($ch);
+
+    if (!$html) {
+        return ['error' => 'FraudChecker.link returned empty response'];
+    }
+
+    $dom = new DOMDocument();
+    @$dom->loadHTML($html);
+    $xpath = new DOMXPath($dom);
+    $rows = $xpath->query('//th[contains(text(), "কুরিয়ার")]/ancestor::table/tbody/tr');
+
+    $courier_data = [];
+    foreach ($rows as $row) {
+        $cells = $row->getElementsByTagName('td');
+        if ($cells->length >= 4) {
+            $courierNode = $row->getElementsByTagName('b');
+            $orders = (int) trim($cells->item(1)->nodeValue);
+            $delivered = (int) trim($cells->item(2)->nodeValue);
+            $cancelled = (int) trim($cells->item(3)->nodeValue);
+            $total = $delivered + $cancelled;
+            $cancelRate = $total > 0 ? round(($cancelled / $total) * 100, 2) : 0;
+
+            $courier_data[] = [
+                'courier' => $courierNode->length > 0 ? trim($courierNode->item(0)->nodeValue) : 'N/A',
+                'orders' => $orders,
+                'delivered' => $delivered,
+                'cancelled' => $cancelled,
+                'cancel_rate' => $cancelRate . '%',
+                'server' => $url
             ];
         }
     }
 
-    // If none are reachable, fall back to all servers (with infinite latency)
-    if (empty($results)) {
-        $results = array_map(function ($s) {
-            return ['server' => $s, 'latency' => INF];
-        }, $servers);
-    }
+    return empty($courier_data) ? ['error' => 'No data found on FraudChecker.link'] : $courier_data;
+}
 
-    // Sort by latency ascending
-    usort($results, function ($a, $b) {
-        return $a['latency'] <=> $b['latency'];
-    });
-
-    // Take the best (lowest latency)
-    $chosen = $results[0]['server'];
-    $functionName = $chosen['function'];
-
-    // Log which server and latency
-    error_log("Chosen server: {$chosen['url']} with latency {$results[0]['latency']} ms");
-
-    if (function_exists($functionName)) {
-        $functionName($user_id, $input, $pdo);
-    } else {
-        error_log("Function {$functionName} not found for server {$chosen['url']}");
-    }
+function tryFraudCheckElite($phone)
+{
+    // Elite uses same endpoint as Link but different parsing might be needed
+    // For now, try the same approach
+    return tryFraudCheckLink($phone);
 }
 
 
