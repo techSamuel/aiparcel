@@ -178,12 +178,15 @@ function updateSummary() {
 
 // --- PARCEL & CARD LOGIC ---
 function createParcelCard(parcelData) {
-    const customerName = parcelData.customerName || 'N/A';
-    const phone = parcelData.phone || parcelData.customerPhone || 'N/A';
-    const address = parcelData.address || parcelData.customerAddress || 'N/A';
-    const orderId = parcelData.orderId || 'N/A';
-    const amount = parcelData.amount || 0;
-    const productName = parcelData.productName || parcelData.item_description || 'N/A';
+    // Debug: Log incoming data to ensure keys match
+    console.log("createParcelCard received:", parcelData);
+
+    const customerName = parcelData.recipient_name || parcelData.customerName || 'N/A';
+    const phone = parcelData.recipient_phone || parcelData.phone || parcelData.customerPhone || 'N/A';
+    const address = parcelData.recipient_address || parcelData.address || parcelData.customerAddress || 'N/A';
+    const orderId = parcelData.order_id || parcelData.orderId || 'N/A';
+    const amount = parcelData.cod_amount || parcelData.amount || 0;
+    const productName = parcelData.item_description || parcelData.productName || 'N/A';
     const note = parcelData.note || 'N/A';
 
     const card = $(`<div class="parcel-card"></div>`).data('orderData', JSON.stringify(parcelData));
