@@ -12,7 +12,7 @@ $input = json_decode(file_get_contents('php://input'), true);
 $action = $input['action'] ?? $_GET['action'] ?? null;
 
 // --- Authentication Handler ---save_parser_settings
-if (in_array($action, ['register', 'login', 'logout', 'check_session', 'resend_verification', 'request_password_reset', 'perform_password_reset', 'google_login_url'])) {
+if (in_array($action, ['register', 'login', 'logout', 'check_session', 'resend_verification', 'verify_code', 'request_password_reset', 'perform_password_reset', 'google_login_url'])) {
     handle_auth($action, $input, $pdo);
 }
 
@@ -20,7 +20,7 @@ if (in_array($action, ['register', 'login', 'logout', 'check_session', 'resend_v
 $user_id = $_SESSION['user_id'] ?? null;
 if (!$user_id) {
     // This is a whitelist of actions that DO NOT require a logged-in user.
-    $public_actions = ['register', 'login', 'check_session', 'resend_verification', 'load_user_data', 'request_password_reset', 'perform_password_reset'];
+    $public_actions = ['register', 'login', 'check_session', 'resend_verification', 'verify_code', 'load_user_data', 'request_password_reset', 'perform_password_reset'];
 
     if (!in_array($action, $public_actions)) {
         // If the action is not in our public whitelist, block it.
@@ -174,23 +174,23 @@ function handle_auth($action, $input, $pdo)
         case 'register':
             $email = filter_var($input['email'], FILTER_VALIDATE_EMAIL);
             $password = $input['password'];
-            $display_name = trim($input['display_name'] ?? ''); // New field
+            $display_name = trim($input['display_name'] ?? '');
 
             if (!$email || strlen($password) < 6) {
                 json_response(['error' => 'Invalid email or password (min 6 chars).'], 400);
             }
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $token = bin2hex(random_bytes(32));
+            $code = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT); // 6-Digit Code
 
             try {
                 // Modified INSERT to include display_name
                 $stmt = $pdo->prepare("INSERT INTO users (email, password, display_name, verification_token, plan_id) VALUES (?, ?, ?, ?, 1)");
-                $stmt->execute([$email, $hashed_password, $display_name, $token]);
+                $stmt->execute([$email, $hashed_password, $display_name, $code]);
 
                 // Call the new reusable function
-                sendVerificationEmail($email, $token);
+                sendVerificationCodeEmail($email, $code, $pdo);
 
-                json_response(['success' => 'Registration successful. Please check your email to verify your account.']);
+                json_response(['success' => 'Registration successful. Please check your email for the verification code.']);
             } catch (PDOException $e) {
                 if ($e->getCode() == 23000) { // Duplicate entry
                     json_response(['error' => 'Email already exists.'], 409);
@@ -199,12 +199,37 @@ function handle_auth($action, $input, $pdo)
             }
             break;
 
+        case 'verify_code':
+            $email = filter_var($input['email'], FILTER_VALIDATE_EMAIL);
+            $code = trim($input['code']);
+
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND verification_token = ?");
+            $stmt->execute([$email, $code]);
+            $user_id = $stmt->fetchColumn();
+
+            if ($user_id) {
+                $pdo->prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?")->execute([$user_id]);
+                json_response(['success' => true]);
+            } else {
+                json_response(['error' => 'Invalid verification code.'], 400);
+            }
+            break;
+
         // In api/index.php
         case 'login':
+            // Auto-Migrate: first_login column
+            try {
+                $stmt_check = $pdo->query("SHOW COLUMNS FROM users LIKE 'first_login'");
+                if ($stmt_check->rowCount() == 0) {
+                    $pdo->exec("ALTER TABLE users ADD COLUMN first_login TINYINT DEFAULT 1");
+                }
+            } catch (Exception $e) {
+            }
+
             $email = filter_var($input['email'], FILTER_VALIDATE_EMAIL);
             $password = $input['password'];
 
-            $stmt = $pdo->prepare("SELECT id, email, password, display_name AS displayName, is_premium, is_verified, is_admin FROM users WHERE email = ?");
+            $stmt = $pdo->prepare("SELECT id, email, password, display_name AS displayName, is_premium, is_verified, is_admin, first_login FROM users WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -221,6 +246,13 @@ function handle_auth($action, $input, $pdo)
                     'loggedIn' => true,
                     'user' => $user
                 ]);
+
+                // Send Welcome Email if first login
+                if ($user['first_login'] == 1) {
+                    if (sendWelcomeEmail($email, $user['displayName'], $pdo)) {
+                        $pdo->prepare("UPDATE users SET first_login = 0 WHERE id = ?")->execute([$user['id']]);
+                    }
+                }
             } else {
                 json_response(['error' => 'Invalid credentials.'], 401);
             }
