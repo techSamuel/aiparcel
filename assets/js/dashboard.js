@@ -307,63 +307,170 @@ async function checkFraudRisk(buttonElement) {
 }
 
 // --- PARSING HELPERS ---
+
+/**
+ * Converts Bengali numerals (০-৯) to English digits (0-9).
+ */
+function convertBengaliToEnglish(str) {
+    const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    return str.replace(/[০-৯]/g, (match) => bengaliDigits.indexOf(match));
+}
+
+/**
+ * Enhanced Smart Auto-Parser: Identifies fields from unstructured order text.
+ * @param {string} orderText - The raw text block for a single parcel.
+ * @returns {object} - Parsed parcel data.
+ */
 function identifyAndParseOrder(orderText) {
-    const fieldRules = [
-        { field: 'customerPhone', regex: /^(\+88\s*)?01[3-9](\d[\s-]*){8}$/, score: 100 },
-        { field: 'amount', regex: /^\s*(BDT|৳|Tk|Cash|\$|€|£)?\s*\d+([\.,]\d{1,2})?(\/-)?\s*(BDT|৳|Tk)?\s*$/i, score: 90 },
-        { field: 'orderId', regex: /(order|id|ref)[\s:-]+[A-Za-z0-9-]+/i, score: 90 },
-        { field: 'orderId', regex: /^[A-Za-z]+[A-Za-z0-9-]{4,40}$/, score: 85 },
-        { field: 'orderId', regex: /^[A-Za-z0-9-]{12,40}$/, score: 80 },
-        { field: 'customerName', regex: /(^মোঃ|Md\.|Mr\.|Mrs\.|Miss)/i, score: 60 },
-        { field: 'customerAddress', regex: /(House|Road|Block|Sector|Holding|Village|Para)[\s:-]+\S+/i, score: 55 },
-        { field: 'productName', regex: /(\d[\sx\*].*[\u0980-\u09FFa-z])|([\u0980-\u09FFa-z].*\d)|(পিস|ইঞ্ছি|kg|gm|pce|টি|pc)/i, score: 50 },
-        { field: 'customerAddress', regex: /(সদ|রোড|গ্রাম|থানা|জেলা|বাসা|হোল্ডিং|union|dist|upazila|road|house)/i, score: 50 },
-        { field: 'customerAddress', regex: /\d+.*,/i, score: 45 },
-        { field: 'note', regex: /(deliver|fast|quick|call|please|tomorrow|urgent|ASAP|^\.$)/i, score: 40 },
-        { field: 'customerAddress', regex: /[A-Za-z\u0980-\u09FF].*[,].*/i, score: 30 },
-        { field: 'customerName', regex: /^[A-Za-z\u0980-\u09FF\s\.-]+$/i, score: 20 },
-    ];
+    const parsedData = {
+        orderId: null,
+        customerName: null,
+        productName: null,
+        amount: null,
+        customerAddress: null,
+        customerPhone: null,
+        note: null
+    };
 
-    const parsedData = { orderId: null, customerName: null, productName: null, amount: null, customerAddress: null, customerPhone: null, note: null };
     let lines = orderText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    let lineScores = [];
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        for (const rule of fieldRules) {
-            let lineToTest = line;
-            if (rule.field === 'customerPhone' || rule.field === 'amount') lineToTest = normalizePhoneNumber(line);
-            if (rule.regex.test(lineToTest)) {
-                lineScores.push({ lineIndex: i, field: rule.field, score: rule.score, line: line });
-            }
-        }
-    }
-    lineScores.sort((a, b) => b.score - a.score);
+    if (lines.length === 0) return parsedData;
 
     const assignedLines = new Set();
-    const assignedFields = new Set();
 
-    for (const scoreInfo of lineScores) {
-        if (!assignedLines.has(scoreInfo.lineIndex) && !assignedFields.has(scoreInfo.field)) {
-            if (scoreInfo.field === 'amount') {
-                parsedData.amount = parseFloat(scoreInfo.line.replace(/[^0-9\.]/g, ''));
-            } else if (scoreInfo.field === 'customerPhone') {
-                parsedData.customerPhone = normalizePhoneNumber(scoreInfo.line.replace(/[\s-]/g, ''));
-            } else {
-                parsedData[scoreInfo.field] = scoreInfo.line;
-            }
-            assignedLines.add(scoreInfo.lineIndex);
-            assignedFields.add(scoreInfo.field);
-        }
-    }
+    // --- PASS 1: Extract Phone Number (Highest Priority) ---
+    // Matches +880, 880, or 01X followed by 8-9 digits, with optional spaces/dashes.
+    const phoneRegex = /^(\+?880|০?)?[0]?1[3-9][0-9\s\-]{7,10}$/;
     for (let i = 0; i < lines.length; i++) {
-        if (!assignedLines.has(i)) {
-            const line = lines[i];
-            if (!parsedData.customerAddress) parsedData.customerAddress = line;
-            else if (!parsedData.productName) parsedData.productName = line;
-            else parsedData.note = (parsedData.note ? parsedData.note + '\n' : '') + line;
+        if (assignedLines.has(i)) continue;
+        const normalizedLine = convertBengaliToEnglish(lines[i].replace(/[\s\-]/g, ''));
+        // A phone number line should primarily be digits after normalization
+        if (phoneRegex.test(lines[i]) || /^(\+?880)?01[3-9]\d{8}$/.test(normalizedLine)) {
+            parsedData.customerPhone = normalizePhoneNumber(normalizedLine);
+            assignedLines.add(i);
+            break; // Only one phone per order
         }
     }
+
+    // --- PASS 2: Extract Amount (High Priority) ---
+    // Matches: ৳1500, 1500/-, 1500 tk, Cash 1500, 1500 (if standalone number)
+    const amountKeywords = /^(BDT|৳|Tk\.?|Cash|টাকা|taka)?[\s]*(\d+[\.,]?\d*)([\s]*(BDT|৳|Tk|টাকা|taka|\/-)?)?$/i;
+    for (let i = 0; i < lines.length; i++) {
+        if (assignedLines.has(i)) continue;
+        const normalizedLine = convertBengaliToEnglish(lines[i]);
+        const match = normalizedLine.match(amountKeywords);
+        // Check if it's a plausible amount (e.g., a number, possibly with currency symbol)
+        // Avoid matching things that are clearly not amounts (like phone numbers already matched)
+        if (match && match[2]) {
+            const potentialAmount = parseFloat(match[2].replace(',', '.'));
+            // Sanity check: amounts are usually between 50 and 100000
+            if (potentialAmount >= 10 && potentialAmount <= 500000) {
+                parsedData.amount = potentialAmount;
+                assignedLines.add(i);
+                break; // Only one amount per order
+            }
+        }
+    }
+
+    // --- PASS 3: Extract Order ID ---
+    // Matches: ORD-XXX, INV-XXX, #XXX, or alphanumeric strings 8+ chars (but not too long)
+    const orderIdRegex = /^(order|id|ref|inv|oid|#)?[\s:\-#]*([A-Za-z0-9\-\_]{6,30})$/i;
+    for (let i = 0; i < lines.length; i++) {
+        if (assignedLines.has(i)) continue;
+        const line = lines[i];
+        // Skip if line has common address/name patterns
+        if (/[,।]/.test(line) || /road|house|village|গ্রাম|রোড/i.test(line)) continue;
+
+        const match = line.match(orderIdRegex);
+        if (match && match[2]) {
+            // Ensure it's not just a simple name (e.g., "John Doe")
+            if (/\d/.test(match[2]) || match[2].length >= 10) {
+                parsedData.orderId = match[2];
+                assignedLines.add(i);
+                break;
+            }
+        }
+    }
+
+    // --- PASS 4: Extract Address (Look for structural keywords) ---
+    const addressKeywords = /(house|road|block|sector|holding|village|para|thana|district|division|union|upazila|zilla|sadar|post|p\.o\.|বাসা|রোড|গ্রাম|থানা|জেলা|বিভাগ|ইউনিয়ন|উপজেলা|হোল্ডিং|পোস্ট|সদর|এলাকা|মহল্লা)/i;
+    const addressPatterns = /\d+[\s,\/\-]+\w+|[A-Za-z\u0980-\u09FF]+[\s,]+[A-Za-z\u0980-\u09FF]+[\s,]+[A-Za-z\u0980-\u09FF]+/; // e.g., "123 Main Street" or comma-separated phrases
+    let bestAddressIndex = -1;
+    let bestAddressScore = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+        if (assignedLines.has(i)) continue;
+        const line = lines[i];
+        let score = 0;
+        if (addressKeywords.test(line)) score += 50;
+        if (line.includes(',') || line.includes('।')) score += 20; // Comma or Bengali full stop often in addresses
+        if (addressPatterns.test(line)) score += 15;
+        if (line.length > 30) score += 10; // Longer lines are more likely addresses
+        if (line.length > 50) score += 10;
+
+        if (score > bestAddressScore) {
+            bestAddressScore = score;
+            bestAddressIndex = i;
+        }
+    }
+    if (bestAddressIndex !== -1 && bestAddressScore >= 20) { // Threshold of 20
+        parsedData.customerAddress = lines[bestAddressIndex];
+        assignedLines.add(bestAddressIndex);
+    }
+
+    // --- PASS 5: Extract Customer Name (Look for titles or short plain text lines) ---
+    const nameTitles = /^(মোঃ|মোহাম্মদ|md\.?|mr\.?|mrs\.?|miss\.?|ms\.?|sheikh|sk\.?|ভাই|আপু|bhai|apu|begum)/i;
+    for (let i = 0; i < lines.length; i++) {
+        if (assignedLines.has(i)) continue;
+        const line = lines[i];
+        if (nameTitles.test(line)) {
+            parsedData.customerName = line;
+            assignedLines.add(i);
+            break;
+        }
+    }
+    // Fallback for name: A short line (2-5 words) that is mostly text, no special chars
+    if (!parsedData.customerName) {
+        for (let i = 0; i < lines.length; i++) {
+            if (assignedLines.has(i)) continue;
+            const line = lines[i];
+            const wordCount = line.split(/\s+/).length;
+            const hasNumbers = /\d/.test(line);
+            const hasSpecialChars = /[,।#@\/\-\:]/.test(line);
+            if (wordCount >= 1 && wordCount <= 5 && !hasNumbers && !hasSpecialChars && line.length < 40) {
+                parsedData.customerName = line;
+                assignedLines.add(i);
+                break;
+            }
+        }
+    }
+
+    // --- PASS 6: Extract Product Name (Look for quantities or item descriptions) ---
+    const productPatterns = /((\d+)\s*(x|×|পিস|pcs?|টি|piece|kg|gm|gram|inch|ইঞ্চি|সাইজ|size))|((x|×|পিস|pcs?|টি|piece|kg|gm|gram)\s*(\d+))/i;
+    for (let i = 0; i < lines.length; i++) {
+        if (assignedLines.has(i)) continue;
+        if (productPatterns.test(lines[i])) {
+            parsedData.productName = lines[i];
+            assignedLines.add(i);
+            break;
+        }
+    }
+
+    // --- PASS 7: Assign remaining lines ---
+    // Priority: Address (if not found) -> Product Name (if not found) -> Note
+    for (let i = 0; i < lines.length; i++) {
+        if (assignedLines.has(i)) continue;
+        const line = lines[i];
+
+        if (!parsedData.customerAddress) {
+            parsedData.customerAddress = line;
+        } else if (!parsedData.productName) {
+            parsedData.productName = line;
+        } else {
+            parsedData.note = (parsedData.note ? parsedData.note + ', ' : '') + line;
+        }
+        assignedLines.add(i);
+    }
+
     return parsedData;
 }
 
