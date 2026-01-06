@@ -120,13 +120,23 @@ if (submitVerificationBtn) {
 
         submitVerificationBtn.disabled = true;
         try {
-            await apiCall('verify_code', { email, code });
-            showMessage(msgEl, 'Verification successful! You can now login.', 'success');
-            setTimeout(() => {
-                verificationView.style.display = 'none';
-                authView.style.display = 'block';
-                switchAuthMode('login');
-            }, 2000);
+            const data = await apiCall('verify_code', { email, code });
+
+            if (data.loggedIn) {
+                showMessage(msgEl, 'Verification successful! Logging you in...', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                // Fallback if backend doesn't return loggedIn
+                showMessage(msgEl, 'Verification successful! Please login.', 'success');
+                setTimeout(() => {
+                    verificationView.style.display = 'none';
+                    authView.style.display = 'block';
+                    switchAuthMode('login');
+                }, 2000);
+            }
+
         } catch (error) {
             showMessage(msgEl, error.message, 'error');
             submitVerificationBtn.disabled = false;
