@@ -98,7 +98,7 @@ try {
         SELECT u.id, u.email, u.display_name, 
                u.monthly_order_count, u.extra_order_limit, u.monthly_ai_parsed_count, u.extra_ai_parsed_limit,
                u.alert_usage_order_75, u.alert_usage_order_90, u.alert_usage_ai_75, u.alert_usage_ai_90,
-               p.monthly_order_limit, p.monthly_ai_parsed_limit
+               p.order_limit_monthly, p.ai_parsing_limit
         FROM users u
         JOIN plans p ON u.plan_id = p.id
         WHERE u.alert_usage_order_90 = 0 OR u.alert_usage_ai_90 = 0 OR u.alert_usage_order_75 = 0 OR u.alert_usage_ai_75 = 0
@@ -106,7 +106,7 @@ try {
 
     while ($row = $stmt_usage->fetch(PDO::FETCH_ASSOC)) {
         // --- Order Usage ---
-        $total_order_limit = $row['monthly_order_limit'] + $row['extra_order_limit'];
+        $total_order_limit = $row['order_limit_monthly'] + $row['extra_order_limit'];
         if ($total_order_limit > 0) {
             $order_percent = ($row['monthly_order_count'] / $total_order_limit) * 100;
 
@@ -135,7 +135,7 @@ try {
         }
 
         // --- AI Usage ---
-        $total_ai_limit = $row['monthly_ai_parsed_limit'] + $row['extra_ai_parsed_limit'];
+        $total_ai_limit = $row['ai_parsing_limit'] + $row['extra_ai_parsed_limit'];
         if ($total_ai_limit > 0) {
             $ai_percent = ($row['monthly_ai_parsed_count'] / $total_ai_limit) * 100;
 
