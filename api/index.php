@@ -203,13 +203,26 @@ function handle_auth($action, $input, $pdo)
             $email = filter_var($input['email'], FILTER_VALIDATE_EMAIL);
             $code = trim($input['code']);
 
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND verification_token = ?");
+            $stmt = $pdo->prepare("SELECT id, display_name, is_admin, first_login FROM users WHERE email = ? AND verification_token = ?");
             $stmt->execute([$email, $code]);
-            $user_id = $stmt->fetchColumn();
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($user_id) {
-                $pdo->prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?")->execute([$user_id]);
-                json_response(['success' => true]);
+            if ($user) {
+                // Verify User
+                $pdo->prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?")->execute([$user['id']]);
+
+                // Auto-Login
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['is_admin'] = (bool) $user['is_admin'];
+
+                // Send Welcome Email if first login
+                if (isset($user['first_login']) && $user['first_login'] == 1) {
+                    if (sendWelcomeEmail($email, $user['display_name'], $pdo)) {
+                        $pdo->prepare("UPDATE users SET first_login = 0 WHERE id = ?")->execute([$user['id']]);
+                    }
+                }
+
+                json_response(['success' => true, 'loggedIn' => true]);
             } else {
                 json_response(['error' => 'Invalid verification code.'], 400);
             }
