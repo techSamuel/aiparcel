@@ -355,7 +355,7 @@ function update_subscription_status()
             $expiry_date = $base_date->modify('+' . $plan['validity_days'] . ' days')->format('Y-m-d');
 
             // Update user record
-            $stmt_user = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, daily_order_count = 0, last_reset_date = CURDATE() WHERE id = ?");
+            $stmt_user = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, monthly_ai_parsed_count = 0, daily_order_count = 0, last_reset_date = CURDATE() WHERE id = ?");
             $stmt_user->execute([$sub['plan_id'], $expiry_date, $sub['user_id']]);
 
             // Send confirmation email to user
