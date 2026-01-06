@@ -339,7 +339,20 @@ function update_subscription_status()
             $plan = $stmt_plan->fetch();
 
             // Calculate new expiry date
-            $expiry_date = (new DateTime())->modify('+' . $plan['validity_days'] . ' days')->format('Y-m-d');
+            // Logic: If current plan is NOT Free (ID 1), add to existing expiry. Else start from today.
+            $stmt_curr = $pdo->prepare("SELECT plan_id, plan_expiry_date FROM users WHERE id = ?");
+            $stmt_curr->execute([$sub['user_id']]);
+            $curr_user = $stmt_curr->fetch();
+
+            $base_date = new DateTime(); // Default start from Today
+            if ($curr_user && $curr_user['plan_id'] != 1 && !empty($curr_user['plan_expiry_date'])) {
+                $curr_expiry = new DateTime($curr_user['plan_expiry_date']);
+                if ($curr_expiry > $base_date) {
+                    $base_date = $curr_expiry; // Start from current future expiry
+                }
+            }
+
+            $expiry_date = $base_date->modify('+' . $plan['validity_days'] . ' days')->format('Y-m-d');
 
             // Update user record
             $stmt_user = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, daily_order_count = 0, last_reset_date = CURDATE() WHERE id = ?");
