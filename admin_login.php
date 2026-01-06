@@ -158,7 +158,7 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['is_admin']) && $_SESSION['is
                     body: JSON.stringify({ action: 'login', email, password })
                 });
                 const data = await response.json();
-                if (data.id) {
+                if (data.success) {
                     window.location.href = 'admin_dashboard.php';
                 } else {
                     $('#admin-auth-message').text(data.error || 'Login failed').addClass('error').show();
