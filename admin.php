@@ -988,7 +988,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                         destroy: true,
                         data: details.parses,
                         columns: [
-                            { title: 'Date', data: 'timestamp', render: data => new Date(data).toLocaleString() },
+                            { title: 'Date', data: 'timestamp', render: data => new Date(data).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
                             { title: 'Method', data: 'method' },
                             // MODIFIED: This now shows the full formatted JSON data
                             {
@@ -1016,7 +1016,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                         destroy: true,
                         data: details.orders,
                         columns: [
-                            { title: 'Date', data: 'timestamp', render: data => new Date(data).toLocaleString() },
+                            { title: 'Date', data: 'timestamp', render: data => new Date(data).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
                             { title: 'Store ID', data: 'store_id' },
                             // MODIFIED: This now shows the full API response
                             {
@@ -1216,7 +1216,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                 // UPDATED 'cols' variable
                 const cols = (type === 'parses') ?
                     [
-                        { title: "Date", data: "timestamp", render: d => new Date(d).toLocaleString() },
+                        { title: "Date", data: "timestamp", render: d => new Date(d).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
                         { title: "User", data: "userEmail" },
                         { title: "Method", data: "method" },
                         // NEW: Added item count column
@@ -1227,7 +1227,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                         }
                     ] :
                     [
-                        { title: "Date", data: "timestamp", render: d => new Date(d).toLocaleString() },
+                        { title: "Date", data: "timestamp", render: d => new Date(d).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
                         { title: "User", data: "userEmail" },
                         { title: "Store ID", data: "store_id" },
                         // NEW: Added status column
@@ -1375,7 +1375,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                     destroy: true,
                     ajax: (d, cb) => apiCall('get_subscription_orders').then(res => cb({ data: res })),
                     columns: [
-                        { title: "Date", data: "created_at", render: d => new Date(d).toLocaleString() },
+                        { title: "Date", data: "created_at", render: d => new Date(d).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
                         { title: "User", data: "user_email" }, { title: "Plan", data: "plan_name" },
                         { title: "Details", data: null, render: (d, t, r) => `From: ${r.sender_number}<br>TrxID: ${r.transaction_id}` },
                         { title: "Status", data: "status" },
