@@ -50,10 +50,20 @@ curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
 $tokenResponse = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlError = curl_error($ch); // Capture error
 curl_close($ch);
 
 if ($httpCode !== 200) {
-    header('Location: ' . APP_URL . '/index.php?error=google_token_failed');
+    // Debugging: Log the error
+    error_log("Google Token Exchange Failed. HTTP Code: " . $httpCode);
+    error_log("Response: " . $tokenResponse);
+    error_log("Curl Error: " . $curlError);
+
+    // Extract meaningful error
+    $errData = json_decode($tokenResponse, true);
+    $debugMsg = $curlError ? "Curl: $curlError" : ($errData['error_description'] ?? $errData['error'] ?? 'Unknown_token_error');
+
+    header('Location: ' . APP_URL . '/index.php?error=google_token_failed&details=' . urlencode($debugMsg));
     exit;
 }
 
