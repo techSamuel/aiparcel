@@ -1774,6 +1774,7 @@ try {
                     appView.style.display = 'none';
                 }
             } catch (e) {
+                console.error('Initialization Error:', e); // --- DEBUG LOG ---
                 try {
                     const publicSettings = await apiCall('load_user_data');
                     applyBranding(publicSettings);
@@ -2061,7 +2062,7 @@ try {
             userInfo.textContent = currentUser.displayName || currentUser.email;
 
             const data = await apiCall('load_user_data');
-            userCourierStores = data.stores;
+            userCourierStores = data.stores || {};
             geminiApiKey = data.geminiApiKey;
             userPermissions = data.permissions || {}; // Store permissions
             helpContent = data.helpContent || '<p>No help guide has been set up by the administrator.</p>';
