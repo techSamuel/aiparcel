@@ -101,7 +101,45 @@ async function handleAuthAction(action, successMessage, payload = {}) {
 }
 
 if (resendVerificationBtn) {
-    resendVerificationBtn.addEventListener('click', () => handleAuthAction('resend_verification', 'If an account exists, a new verification link has been sent.'));
+    resendVerificationBtn.addEventListener('click', () => handleAuthAction('resend_verification', 'A new verification code has been sent to your email.'));
+}
+
+const submitVerificationBtn = document.getElementById('submitVerificationBtn');
+const backToLoginFromVerify = document.getElementById('backToLoginFromVerify');
+
+if (submitVerificationBtn) {
+    submitVerificationBtn.addEventListener('click', async () => {
+        const email = emailInput.value;
+        const code = document.getElementById('verificationCode').value;
+        const msgEl = document.getElementById('verification-message');
+
+        if (!code || code.length !== 6) {
+            showMessage(msgEl, 'Please enter a valid 6-digit code.', 'error');
+            return;
+        }
+
+        submitVerificationBtn.disabled = true;
+        try {
+            await apiCall('verify_code', { email, code });
+            showMessage(msgEl, 'Verification successful! You can now login.', 'success');
+            setTimeout(() => {
+                verificationView.style.display = 'none';
+                authView.style.display = 'block';
+                switchAuthMode('login');
+            }, 2000);
+        } catch (error) {
+            showMessage(msgEl, error.message, 'error');
+            submitVerificationBtn.disabled = false;
+        }
+    });
+}
+
+if (backToLoginFromVerify) {
+    backToLoginFromVerify.addEventListener('click', () => {
+        verificationView.style.display = 'none';
+        authView.style.display = 'block';
+        switchAuthMode('login');
+    });
 }
 
 // --- Google Sign-In Handler ---
