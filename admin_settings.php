@@ -127,50 +127,49 @@
         });
 
 
-    // Run Cron
-    $('#btnRunCron').click(async function () {
-        if (!confirm('Are you sure? This will execute real database changes (Demotion/Emails).')) return;
-        const btn = $(this);
-        btn.prop('disabled', true).text('Running...');
-        $('#cronOutput').hide().html('');
+        // Run Cron
+        $('#btnRunCron').click(async function () {
+            if (!confirm('Are you sure? This will execute real database changes (Demotion/Emails).')) return;
+            const btn = $(this);
+            btn.prop('disabled', true).text('Running...');
+            $('#cronOutput').hide().html('');
 
-        try {
-            // Determine API URL (handle potential subdirectory issues)
-            const res = await fetch('api/cron.php');
-            const data = await res.json();
+            try {
+                // Determine API URL (handle potential subdirectory issues)
+                const res = await fetch('api/cron.php');
+                const data = await res.json();
 
-            let html = '<strong>Result:</strong> ' + (data.success ? '<span style="color:green">Success</span>' : '<span style="color:red">Failed</span>') + '<br>';
-            if (data.log && data.log.length) {
-                html += '<ul style="padding-left: 20px; margin: 5px 0;">' + data.log.map(l => `<li>${l}</li>`).join('') + '</ul>';
-            } else {
-                html += '<em>No actions taken (no expired users or warnings).</em>';
+                let html = '<strong>Result:</strong> ' + (data.success ? '<span style="color:green">Success</span>' : '<span style="color:red">Failed</span>') + '<br>';
+                if (data.log && data.log.length) {
+                    html += '<ul style="padding-left: 20px; margin: 5px 0;">' + data.log.map(l => `<li>${l}</li>`).join('') + '</ul>';
+                } else {
+                    html += '<em>No actions taken (no expired users or warnings).</em>';
+                }
+                $('#cronOutput').html(html).show();
+            } catch (e) {
+                $('#cronOutput').html('<span style="color:red">Error: ' + e.message + '</span>').show();
+            } finally {
+                btn.prop('disabled', false).text('Run Daily Maintenance Now');
             }
-            $('#cronOutput').html(html).show();
-        } catch (e) {
-            $('#cronOutput').html('<span style="color:red">Error: ' + e.message + '</span>').show();
-        } finally {
-            btn.prop('disabled', false).text('Run Daily Maintenance Now');
-        }
-    });
+        });
 
-    // Test Email
-    $('#btnSendTestEmail').click(async function () {
-        const email = $('#testEmailInput').val();
-        if (!email) return alert('Please enter an email address.');
+        // Test Email
+        $('#btnSendTestEmail').click(async function () {
+            const email = $('#testEmailInput').val();
+            if (!email) return alert('Please enter an email address.');
 
-        const btn = $(this);
-        const originalText = btn.text();
-        btn.prop('disabled', true).text('Sending...');
+            const btn = $(this);
+            const originalText = btn.text();
+            btn.prop('disabled', true).text('Sending...');
 
-        try {
-            await apiCall('send_test_email', { email: email });
-            alert('Test email sent successfully!');
-        } catch (e) {
-            alert('Failed: ' + e.message);
-        } finally {
-            btn.prop('disabled', false).text(originalText);
-        }
+            try {
+                await apiCall('send_test_email', { email: email });
+                alert('Test email sent successfully!');
+            } catch (e) {
+                alert('Failed: ' + e.message);
+            } finally {
+                btn.prop('disabled', false).text(originalText);
+            }
+        });
     });
-    });
-});
 </script>
