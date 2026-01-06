@@ -483,76 +483,38 @@ function parseWithAi($user_id, $input, $pdo)
 
     // --- 4. Build prompt ---
     $prompt = <<<EOT
-You are an expert parcel data extractor. The input text contains multiple parcels, but they are NOT clearly separated.
-Your goal is to **cluster** the lines of text into logical "Parcel Groups" and then extract the data for each group.
+You are an expert parcel data extractor.
+**Task:** Extract parcel data from the input text.
 
-**CRITICAL INSTRUCTION: HANDLING MULTI-LINE DATA**
-- A single parcel's data is almost ALWAYS spread across **multiple lines**.
-- Do NOT treat every newline as a new parcel.
-- **Grouping Logic:** Group lines together that belong to the same person. A new parcel usually starts when you see a new distinct Phone Number or a completely new Order ID/Name context.
-- **Chaos Mode:** The fields (Amount, Name, Address, Phone) are in RANDOM order. You must infer the field type based on the content.
+**Input Structure:**
+- **Separation:** distinct parcels are separated by **EMPTY LINE BREAKS**.
+- **Block Content:** Each block between empty lines represents ONE customer.
+- **Chaotic Order:** Inside a block, lines can be in ANY order (e.g., Phone first, or Address first).
 
-**Fields to Extract for each parcel:**
-- recipient_name (Look for human names like "Khaja Machum", "Rahim", etc. If missing, use null)
-- recipient_phone (Look for 11 digit numbers starting with 01, e.g., 01xxxxxxxxx. Convert Bengali numerals to English)
-- recipient_address (Look for location keywords: Road, House, Bazar, Zilla, Thana. **Merge multiple lines** if the address is split.)
-- thana
-- district
-- cod_amount (Look for numbers like 370.00, 800, etc. near currency symbols or standalone)
-- order_id (Look for Invoice IDs, "FacebookManual...", or alphanumeric codes)
-- item_description (Look for names of items, "Size", "Pcs", "Set")
-- note (Delivery instructions like "Deliver carefully", "Call before")
+**Fields to Extract:**
+1. **recipient_phone** (MANDATORY): 11-digit BD number (01xxxxxxxxx).
+2. **recipient_address** (MANDATORY): Full address. Merge lines if needed. Complete partial addresses (add District/Thana).
+3. **cod_amount** (MANDATORY): Product Price/COD. Look for numbers like 500, 1200.00.
+4. **recipient_name** (Optional): Customer name.
+5. **order_id** (Optional): Invoice/Order ID.
+6. **item_description** (Optional): Product Name/Description.
+7. **note** (Optional): Instructions.
 
-**Address Correction Rules:**
-- If the identified address is partial (e.g., "Mirpur 10"), you MUST complete it logically (e.g., "Mirpur 10, Dhaka"). 
-- Infer Thana/District from the address text.
+**Critical Rules:**
+1. **Mandatory Fields:** If a block lacks a Phone, Address, OR Price, try your best to infer them from context.
+2. **One Block = One Parcel:** Do not split a block separated by empty lines into multiple parcels.
+3. **Clustering:** If empty lines are missing, use the "Mandatory Fields" (Phone/Address/Price) to identify where one parcel ends and the next begins.
 
-**Few-Shot Examples (Study these carefully):**
+**Examples:**
 
 **Input:**
 370.00
-Cox's Bazar Moheshkhali Kalarmarchhara New Market.
+Cox's Bazar Moheshkhali.
 01344980362
-Deliver carefully. Size 2 pcs
-
-**Reasoning:**
-- Line 1: "370.00" -> Amount
-- Line 2: "Cox's Bazar..." -> Address
-- Line 3: "01344980362" -> Phone
-- Line 4: "Deliver..." -> Note/Item
--> All these lines belong to **ONE** parcel because they are adjacent and contain only one phone/address set.
+Size 2 pcs
 
 **Output:**
-[
-  {
-    "recipient_name": null,
-    "recipient_phone": "01344980362",
-    "recipient_address": "Kalarmarchhara New Market, Moheshkhali, Cox's Bazar",
-    "thana": "Moheshkhali",
-    "district": "Cox's Bazar",
-    "cod_amount": 370,
-    "order_id": null,
-    "item_description": "Size 2 pcs",
-    "note": "Deliver carefully"
-  }
-]
-
-**Input:**
-FacebookManual297348732
-Khaja Machum Kamal
-56 pcs Dua Sticker 2 Set
-800
-Haiderganj Banglabazar, Raipur, Lakshmipur
-01724010212
-
-**Reasoning:**
-- Line 1: Order ID
-- Line 2: Name
-- Line 3: Item
-- Line 4: Amount
-- Line 5: Address
-- Line 6: Phone
--> All text belongs to **ONE** parcel.
+[{"recipient_phone": "01344980362", "recipient_address": "Moheshkhali, Cox's Bazar", "cod_amount": 370, "item_description": "Size 2 pcs", "recipient_name": null, "order_id": null, "note": null}]
 
 **Input text to process:**
 ---
