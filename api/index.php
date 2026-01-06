@@ -69,6 +69,16 @@ switch ($action) {
         break;
     // --- NEW SUBSCRIPTION ENDPOINTS ---
     case 'get_subscription_data':
+        // AUTO-MIGRATE: Ensure extra limit columns exist to prevent SQL errors
+        try {
+            $stmt_check = $pdo->query("SHOW COLUMNS FROM users LIKE 'extra_order_limit'");
+            if ($stmt_check->rowCount() == 0) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN extra_order_limit INT DEFAULT 0 AFTER monthly_order_count");
+                $pdo->exec("ALTER TABLE users ADD COLUMN extra_ai_parsed_limit INT DEFAULT 0 AFTER monthly_ai_parsed_count");
+            }
+        } catch (Exception $e) { /* Ignore errors if columns exist or permissions fail */
+        }
+
         $stmt_user = $pdo->prepare("
             SELECT u.plan_id, p.name as plan_name, p.order_limit_daily, 
                    (p.order_limit_monthly + IFNULL(u.extra_order_limit, 0)) as order_limit_monthly, 
