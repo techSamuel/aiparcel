@@ -483,46 +483,46 @@ function parseWithAi($user_id, $input, $pdo)
 
     // --- 4. Build prompt ---
     $prompt = <<<EOT
-You are an advanced parcel data parser. The input text contains details for multiple parcels.
-Your task is to identify and extract data for EACH separate parcel.
+You are an expert parcel data extractor. The input text contains multiple parcels, but they are NOT clearly separated.
+Your goal is to **cluster** the lines of text into logical "Parcel Groups" and then extract the data for each group.
 
-Input Format:
-- The input contains multiple parcels.
-- Each parcel's information might be on a single line or spread across multiple lines.
-- Parcels are typically separated by one or more newlines, or by clear changes in context (e.g., a new name/phone number starting).
-- The fields (Name, Address, Phone, Amount, etc.) can appear in ANY random order.
+**CRITICAL INSTRUCTION: HANDLING MULTI-LINE DATA**
+- A single parcel's data is almost ALWAYS spread across **multiple lines**.
+- Do NOT treat every newline as a new parcel.
+- **Grouping Logic:** Group lines together that belong to the same person. A new parcel usually starts when you see a new distinct Phone Number or a completely new Order ID/Name context.
+- **Chaos Mode:** The fields (Amount, Name, Address, Phone) are in RANDOM order. You must infer the field type based on the content.
 
-Fields to Extract for each parcel:
-- recipient_name
-- recipient_phone
-- recipient_address (Validate and complete the address: add missing Thana/District/Division if inferable)
+**Fields to Extract for each parcel:**
+- recipient_name (Look for human names like "Khaja Machum", "Rahim", etc. If missing, use null)
+- recipient_phone (Look for 11 digit numbers starting with 01, e.g., 01xxxxxxxxx. Convert Bengali numerals to English)
+- recipient_address (Look for location keywords: Road, House, Bazar, Zilla, Thana. **Merge multiple lines** if the address is split.)
 - thana
 - district
-- cod_amount (Numeric value only)
-- order_id
-- item_description
-- note
+- cod_amount (Look for numbers like 370.00, 800, etc. near currency symbols or standalone)
+- order_id (Look for Invoice IDs, "FacebookManual...", or alphanumeric codes)
+- item_description (Look for names of items, "Size", "Pcs", "Set")
+- note (Delivery instructions like "Deliver carefully", "Call before")
 
-Rules:
-1. **Separation**: strict separation between parcels. Do not combine data from two different parcels.
-2. **Language**: Keep the output language consistent with the input (Bangla/English).
-3. **Address Correction**: If an address is partial (e.g., "Mirpur 10"), complete it logically (e.g., "Mirpur 10, Dhaka").
+**Address Correction Rules:**
+- If the identified address is partial (e.g., "Mirpur 10"), you MUST complete it logically (e.g., "Mirpur 10, Dhaka"). 
+- Infer Thana/District from the address text.
 
-Examples:
+**Few-Shot Examples (Study these carefully):**
 
-Input:
+**Input:**
 370.00
-কক্সবাজার মহেশখালী কালারমারছড়া নিউ মার্কেট। কালার মার ছড়া কক্সবাজার
+Cox's Bazar Moheshkhali Kalarmarchhara New Market.
 01344980362
-সাবধানে ডেলিভারী হবে। সাইজ ২ পিস
-FacebookManual297348732
-খাজা মাছুম কামাল
-৫৬ পিস দোয়া স্টিকার 2 সেট
-800
-হায়দারগঞ্জ বাংলাবাজার, রায়পুর, লক্ষ্মীপুর
-01724010212
+Deliver carefully. Size 2 pcs
 
-Output:
+**Reasoning:**
+- Line 1: "370.00" -> Amount
+- Line 2: "Cox's Bazar..." -> Address
+- Line 3: "01344980362" -> Phone
+- Line 4: "Deliver..." -> Note/Item
+-> All these lines belong to **ONE** parcel because they are adjacent and contain only one phone/address set.
+
+**Output:**
 [
   {
     "recipient_name": null,
@@ -534,21 +534,27 @@ Output:
     "order_id": null,
     "item_description": "Size 2 pcs",
     "note": "Deliver carefully"
-  },
-  {
-    "recipient_name": "Khaja Machum Kamal",
-    "recipient_phone": "01724010212",
-    "recipient_address": "Haiderganj Banglabazar, Raipur, Lakshmipur",
-    "thana": "Raipur",
-    "district": "Lakshmipur",
-    "cod_amount": 800,
-    "order_id": "FacebookManual297348732",
-    "item_description": "56 pcs Dua Sticker 2 Set",
-    "note": null
   }
 ]
 
-Input text:
+**Input:**
+FacebookManual297348732
+Khaja Machum Kamal
+56 pcs Dua Sticker 2 Set
+800
+Haiderganj Banglabazar, Raipur, Lakshmipur
+01724010212
+
+**Reasoning:**
+- Line 1: Order ID
+- Line 2: Name
+- Line 3: Item
+- Line 4: Amount
+- Line 5: Address
+- Line 6: Phone
+-> All text belongs to **ONE** parcel.
+
+**Input text to process:**
 ---
 $raw_text
 ---
