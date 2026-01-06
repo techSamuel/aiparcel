@@ -123,6 +123,15 @@ async function renderPlanStatus() {
         } else if (status.order_limit_daily) {
             usageHTML = `<p>Orders today: <strong>${status.daily_order_count} / ${status.order_limit_daily}</strong></p>`;
         }
+
+        // NEW: AI Usage
+        if (status.ai_parsing_limit > 0) {
+            const aiPercentage = Math.min((status.monthly_ai_parsed_count / status.ai_parsing_limit) * 100, 100);
+            usageHTML += `<div style="margin-top:8px; border-top: 1px dashed #eee; padding-top:5px;">
+                            <p style="font-size:13px; margin-bottom: 2px;">AI Parsing: <strong>${status.monthly_ai_parsed_count} / ${status.ai_parsing_limit}</strong></p>
+                            <div class="progress-bar" style="height:6px; margin-top:0;"><div class="progress-bar-inner" style="width:${aiPercentage}%; background-color: #9b59b6;"></div></div>
+                          </div>`;
+        }
         planStatusView.innerHTML = `<h3>Current Plan: <strong>${status.plan_name}</strong></h3>${usageHTML}<p>Expires on: <strong>${status.plan_expiry_date ? new Date(status.plan_expiry_date).toLocaleDateString() : 'N/A'}</strong></p>`;
         planStatusView.style.display = 'block';
     } catch (e) {
@@ -1007,7 +1016,8 @@ openUpgradeModalBtn.addEventListener('click', async () => {
         $plansContainer.empty();
         if (availablePlans.length === 0) { $plansContainer.html('<p>No plans available.</p>'); return; }
         availablePlans.forEach(plan => {
-            $plansContainer.append(`<div class="plan-option" data-plan-id="${plan.id}"><h4>${plan.name} - ${plan.price} BDT</h4><p>${plan.description}</p></div>`);
+            const aiInfo = plan.ai_parsing_limit > 0 ? `<br><small style="color:#2c3e50; font-weight:600;">AI Parsing: ${plan.ai_parsing_limit} / month</small>` : '';
+            $plansContainer.append(`<div class="plan-option" data-plan-id="${plan.id}"><h4>${plan.name} - ${plan.price} BDT</h4><p>${plan.description}${aiInfo}</p></div>`);
         });
     } catch (e) { $plansContainer.html(`<p class="error">Could not load plans.</p>`); }
 });

@@ -227,11 +227,13 @@ function handle_save_plan()
     $id = $input['id'] ?? null;
 
     // Prepare data, including new permissions
+    // Prepare data, including new permissions
     $params = [
         $input['name'],
         $input['price'],
         $input['order_limit_monthly'],
         $input['order_limit_daily'],
+        $input['ai_parsing_limit'] ?? 0, // NEW field
         $input['validity_days'],
         $input['description'],
         $input['is_active'],
@@ -243,12 +245,12 @@ function handle_save_plan()
     ];
 
     if ($id) {
-        $sql = "UPDATE plans SET name=?, price=?, order_limit_monthly=?, order_limit_daily=?, validity_days=?, description=?, is_active=?, can_parse_ai=?, can_autocomplete=?, can_check_risk=?, can_correct_address=?, can_show_ads=? WHERE id=?";
+        $sql = "UPDATE plans SET name=?, price=?, order_limit_monthly=?, order_limit_daily=?, ai_parsing_limit=?, validity_days=?, description=?, is_active=?, can_parse_ai=?, can_autocomplete=?, can_check_risk=?, can_correct_address=?, can_show_ads=? WHERE id=?";
         $params[] = $id;
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
     } else {
-        $sql = "INSERT INTO plans (name, price, order_limit_monthly, order_limit_daily, validity_days, description, is_active, can_parse_ai, can_autocomplete, can_check_risk, can_correct_address, can_show_ads) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO plans (name, price, order_limit_monthly, order_limit_daily, ai_parsing_limit, validity_days, description, is_active, can_parse_ai, can_autocomplete, can_check_risk, can_correct_address, can_show_ads) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
     }

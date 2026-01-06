@@ -70,8 +70,8 @@ switch ($action) {
     // --- NEW SUBSCRIPTION ENDPOINTS ---
     case 'get_subscription_data':
         $stmt_user = $pdo->prepare("
-            SELECT u.plan_id, p.name as plan_name, p.order_limit_daily, p.order_limit_monthly,
-                   u.plan_expiry_date, u.daily_order_count, u.monthly_order_count
+            SELECT u.plan_id, p.name as plan_name, p.order_limit_daily, p.order_limit_monthly, p.ai_parsing_limit,
+                   u.plan_expiry_date, u.daily_order_count, u.monthly_order_count, u.monthly_ai_parsed_count
             FROM users u
             JOIN plans p ON u.plan_id = p.id
             WHERE u.id = ?
@@ -81,7 +81,7 @@ switch ($action) {
         break;
 
     case 'get_available_plans':
-        $stmt = $pdo->query("SELECT id, name, price, description, validity_days, order_limit_daily, order_limit_monthly FROM plans WHERE is_active = 1 AND price > 0 ORDER by name ASC");
+        $stmt = $pdo->query("SELECT id, name, price, description, validity_days, order_limit_daily, order_limit_monthly, ai_parsing_limit FROM plans WHERE is_active = 1 AND price > 0 ORDER by name ASC");
         json_response($stmt->fetchAll());
         break;
 
@@ -452,15 +452,46 @@ function parseWithAi($user_id, $input, $pdo)
             p.can_parse_ai, 
             p.order_limit_daily, 
             p.order_limit_monthly,
+            p.ai_parsing_limit,
+            p.validity_days,
             u.plan_expiry_date, 
             u.daily_order_count, 
-            u.monthly_order_count
+            u.monthly_order_count,
+            u.monthly_ai_parsed_count,
+            u.last_reset_date
         FROM users u 
         JOIN plans p ON u.plan_id = p.id 
         WHERE u.id = ?
     ");
     $stmt_user_plan->execute([$user_id]);
     $user_data = $stmt_user_plan->fetch(PDO::FETCH_ASSOC);
+
+    // --- RESET LOGIC (Duplicated from create_order) ---
+    $today = date('Y-m-d');
+    if ($user_data['last_reset_date'] != $today) {
+        $should_reset_monthly = false;
+        $last_reset = new DateTime($user_data['last_reset_date'] ?? '1970-01-01');
+        $days_since_reset = $last_reset->diff(new DateTime())->days;
+        if ($user_data['validity_days'] > 1 && $days_since_reset >= $user_data['validity_days']) {
+            $should_reset_monthly = true;
+        }
+
+        // Prepare update
+        $updates = ['daily_order_count' => 0];
+        $sql_set = "daily_order_count = 0";
+
+        if ($should_reset_monthly) {
+            $updates['monthly_order_count'] = 0;
+            $updates['monthly_ai_parsed_count'] = 0;
+            $sql_set .= ", monthly_order_count = 0, monthly_ai_parsed_count = 0";
+            // Update local var for immediate check
+            $user_data['monthly_ai_parsed_count'] = 0;
+        }
+
+        $sql_set .= ", last_reset_date = ?";
+        $pdo->prepare("UPDATE users SET $sql_set WHERE id = ?")->execute([$today, $user_id]);
+    }
+    // --- END RESET LOGIC ---
 
     if (!$user_data || !$user_data['can_parse_ai']) {
         json_response(['error' => 'AI features are not available on your current plan.'], 403);
@@ -482,6 +513,10 @@ function parseWithAi($user_id, $input, $pdo)
     }
     if ($user_data['order_limit_monthly'] > 0 && $user_data['monthly_order_count'] >= $user_data['order_limit_monthly']) {
         json_response(['error' => 'Monthly order limit reached. You cannot parse more parcels this month.'], 403);
+    }
+    // New AI Limit Check
+    if ($user_data['ai_parsing_limit'] > 0 && $user_data['monthly_ai_parsed_count'] >= $user_data['ai_parsing_limit']) {
+        json_response(['error' => 'Monthly AI parsing limit reached (' . $user_data['ai_parsing_limit'] . '). Upgrade plan.'], 403);
     }
 
     // --- 2. Get Gemini API key (MODIFIED BLOCK) ---
@@ -596,6 +631,11 @@ EOT;
     $parsed_json = json_decode(str_replace(['```json', '```'], '', $ai_text_response), true);
 
     // --- 8. Return parsed JSON ---
+    // --- 8. Return parsed JSON ---
+
+    // Increment AI Parsed Count
+    $pdo->prepare("UPDATE users SET monthly_ai_parsed_count = monthly_ai_parsed_count + 1 WHERE id = ?")->execute([$user_id]);
+
     // Wrap in 'parses' key as frontend expects { parses: [...] }
     json_response(['parses' => is_array($parsed_json) ? $parsed_json : []]);
 }
@@ -767,7 +807,7 @@ function create_order($user_id, $input, $pdo)
 
         if ($plan['validity_days'] > 1 && $days_since_reset >= $plan['validity_days']) {
             $user['monthly_order_count'] = 0;
-            $pdo->prepare("UPDATE users SET last_reset_date = ? WHERE id = ?")->execute([$today, $user_id]);
+            $pdo->prepare("UPDATE users SET monthly_order_count = 0, monthly_ai_parsed_count = 0, last_reset_date = ? WHERE id = ?")->execute([$today, $user_id]);
         } else {
             $pdo->prepare("UPDATE users SET last_reset_date = ? WHERE id = ?")->execute([$today, $user_id]);
         }

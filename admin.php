@@ -614,6 +614,9 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                                         placeholder="Leave blank for none"></div>
                                 <div class="form-group"><label for="plan-limit-daily">Daily Order Limit</label><input
                                         type="number" id="plan-limit-daily" placeholder="Leave blank for none"></div>
+                                <div class="form-group"><label for="plan-limit-ai">Monthly AI Parsing Limit
+                                        (Parcels)</label><input type="number" id="plan-limit-ai"
+                                        placeholder="Leave blank for none/unlimited"></div>
                                 <div class="form-group"><label for="plan-validity">Validity (Days)</label><input
                                         type="number" id="plan-validity" required></div>
                                 <div class="form-group"><label for="plan-description">Description</label><textarea
@@ -1193,6 +1196,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                         // ADD THESE HIDDEN COLUMNS TO MAKE THE DATA AVAILABLE
                         { data: "order_limit_monthly", visible: false },
                         { data: "order_limit_daily", visible: false },
+                        { data: "ai_parsing_limit", visible: false }, // NEW
                         { data: "validity_days", visible: false },
                         { data: "description", visible: false },
                         // ---
@@ -1209,6 +1213,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                     price: $('#plan-price').val(),
                     order_limit_monthly: $('#plan-limit-monthly').val() || null,
                     order_limit_daily: $('#plan-limit-daily').val() || null,
+                    ai_parsing_limit: $('#plan-limit-ai').val() || 0,
                     validity_days: $('#plan-validity').val(),
                     description: $('#plan-description').val(),
                     is_active: $('#plan-is-active').is(':checked') ? 1 : 0,
@@ -1234,6 +1239,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                 $('#plan-price').val(data.price);
                 $('#plan-limit-monthly').val(data.order_limit_monthly);
                 $('#plan-limit-daily').val(data.order_limit_daily);
+                $('#plan-limit-ai').val(data.ai_parsing_limit);
                 $('#plan-validity').val(data.validity_days);
                 $('#plan-description').val(data.description);
                 $('#plan-is-active').prop('checked', data.is_active == 1);
