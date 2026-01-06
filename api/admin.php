@@ -695,7 +695,7 @@ function handle_manual_adjust_user()
         }
     }
 
-    $sql = "UPDATE users SET extra_order_limit = extra_order_limit + ?, extra_ai_parsed_limit = extra_ai_parsed_limit + ?";
+    $sql = "UPDATE users SET monthly_order_count = monthly_order_count + ?, monthly_ai_parsed_count = monthly_ai_parsed_count + ?";
     $params = [$order_delta, $ai_delta];
 
     if ($validity_delta != 0) {

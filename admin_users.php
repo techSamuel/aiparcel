@@ -68,8 +68,8 @@
                         <h4>Manual Adjustments (Testing)</h4>
                         <div style="background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                                <div><label style="font-size: 11px; color: #666; display:block;">Order Limit (+/-)</label><input type="number" id="adj-order-delta" value="0" style="width: 100%; padding: 5px;"></div>
-                                <div><label style="font-size: 11px; color: #666; display:block;">AI Limit (+/-)</label><input type="number" id="adj-ai-delta" value="0" style="width: 100%; padding: 5px;"></div>
+                                <div><label style="font-size: 11px; color: #666; display:block;">Used Orders (+/-)</label><input type="number" id="adj-order-delta" value="0" style="width: 100%; padding: 5px;"></div>
+                                <div><label style="font-size: 11px; color: #666; display:block;">Used AI (+/-)</label><input type="number" id="adj-ai-delta" value="0" style="width: 100%; padding: 5px;"></div>
                                 <div><label style="font-size: 11px; color: #666; display:block;">Validity Days (+/-)</label><input type="number" id="adj-validity-delta" value="0" style="width: 100%; padding: 5px;"></div>
                             </div>
                             <button id="btn-manual-adjust" class="btn-primary btn-sm" data-uid="${uid}" style="width: 100%;">Apply Adjustments</button>
@@ -135,20 +135,20 @@
             try { await apiCall('update_user_plan', { uid, plan_id }); alert('Plan updated.'); $('#user-details-modal').hide(); } catch (e) { alert('Failed: ' + e.message); }
         });
 
-        $('#user-details-modal').on('click', '#btn-manual-adjust', async function() {
+        $('#user-details-modal').on('click', '#btn-manual-adjust', async function () {
             const uid = $(this).data('uid');
             const order_delta = $('#adj-order-delta').val();
             const ai_delta = $('#adj-ai-delta').val();
             const validity_delta = $('#adj-validity-delta').val();
-            
+
             if (order_delta == 0 && ai_delta == 0 && validity_delta == 0) return alert('Please enter at least one adjustment value.');
             if (!confirm('Apply these manual adjustments?')) return;
-            
+
             try {
                 await apiCall('manual_adjust_user', { uid, order_delta, ai_delta, validity_delta });
                 alert('Adjustments applied successfully.');
                 $('#user-details-modal').hide();
-            } catch(e) {
+            } catch (e) {
                 alert('Failed: ' + e.message);
             }
         });
