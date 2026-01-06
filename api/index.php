@@ -483,15 +483,31 @@ function parseWithAi($user_id, $input, $pdo)
 
     // --- 4. Build prompt ---
     $prompt = <<<EOT
-You are an address parser. For each parcel in the input, extract these fields:
+You are an advanced parcel data parser. The input text contains details for multiple parcels.
+Your task is to identify and extract data for EACH separate parcel.
 
-recipient_name, recipient_phone, recipient_address, thana, district, cod_amount, order_id, item_description, note.
+Input Format:
+- The input contains multiple parcels.
+- Each parcel's information might be on a single line or spread across multiple lines.
+- Parcels are typically separated by one or more newlines, or by clear changes in context (e.g., a new name/phone number starting).
+- The fields (Name, Address, Phone, Amount, etc.) can appear in ANY random order.
+
+Fields to Extract for each parcel:
+- recipient_name
+- recipient_phone
+- recipient_address (Validate and complete the address: add missing Thana/District/Division if inferable)
+- thana
+- district
+- cod_amount (Numeric value only)
+- order_id
+- item_description
+- note
 
 Rules:
-1. If the address is in Bangla, return all fields in Bangla.
-2. If the address is in English, return all fields in English.
-3. If the recipient_address you parsed from text is incomplete like thana jela not present then complete with full correct address with correct thana,jela with correct spelling
-4. Return only a JSON array. Use null for unknown fields.
+1. **Separation**: strict separation between parcels. Do not combine data from two different parcels.
+2. **Language**: Keep the output language consistent with the input (Bangla/English).
+3. **Address Correction**: If an address is partial (e.g., "Mirpur 10"), complete it logically (e.g., "Mirpur 10, Dhaka").
+4. **Output Format**: Return strictly a JSON Array of objects. No markdown, no code blocks, just the raw JSON string.
 
 Input text:
 ---
