@@ -248,8 +248,19 @@ function handle_auth($action, $input, $pdo)
 
             if ($user && password_verify($password, $user['password'])) {
                 if (!$user['is_verified']) {
-                    json_response(['error' => 'Email not verified.', 'notVerified' => true, 'email' => $email], 403);
+                    // Auto-resend verification code
+                    $verification_token = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+                    $pdo->prepare("UPDATE users SET verification_token = ? WHERE id = ?")->execute([$verification_token, $user['id']]);
+                    sendVerificationCodeEmail($email, $verification_token, $pdo);
+
+                    json_response(['error' => 'Email not verified. A new code has been sent.', 'notVerified' => true, 'email' => $email], 403);
                 }
+
+                // Clean old sessions
+                session_unset();
+                session_destroy();
+                session_set_cookie_params(0, '/');
+                session_start();
 
                 // Success! Set session variables.
                 $_SESSION['user_id'] = $user['id'];
