@@ -646,9 +646,24 @@ $('#parsedDataContainer').on('click', '.remove-btn', function () {
 checkAllRiskBtn.addEventListener('click', async () => {
     const allCheckButtons = parsedDataContainer.querySelectorAll('.check-risk-btn:not(:disabled)');
     if (allCheckButtons.length === 0) { alert('No parcels to check or all risks have been checked already.'); return; }
-    for (const button of allCheckButtons) {
-        checkFraudRisk(button);
-        await new Promise(res => setTimeout(res, 500));
+
+    // Disable button during progress
+    checkAllRiskBtn.disabled = true;
+    checkAllRiskBtn.textContent = 'Checking...';
+    checkAllRiskBtn.style.opacity = '0.6';
+    checkAllRiskBtn.style.cursor = 'not-allowed';
+
+    try {
+        for (const button of allCheckButtons) {
+            checkFraudRisk(button);
+            await new Promise(res => setTimeout(res, 500));
+        }
+    } finally {
+        // Re-enable button after all checks complete
+        checkAllRiskBtn.disabled = false;
+        checkAllRiskBtn.textContent = 'Check All Risks';
+        checkAllRiskBtn.style.opacity = '1';
+        checkAllRiskBtn.style.cursor = 'pointer';
     }
 });
 
