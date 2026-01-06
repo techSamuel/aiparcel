@@ -201,13 +201,13 @@ function handle_get_user_details()
     $details['orders'] = $stmt_orders->fetchAll();
 
     $stmt_plan = $pdo->prepare("
-        SELECT u.plan_id, p.name as plan_name, u.plan_expiry_date 
+        SELECT u.plan_id, p.name as plan_name, u.plan_expiry_date, u.can_manual_parse 
         FROM users u 
         LEFT JOIN plans p ON u.plan_id = p.id 
         WHERE u.id = ?
     ");
     $stmt_plan->execute([$target_uid]);
-    $details['plan'] = $stmt_plan->fetch();
+    $details['plan'] = $stmt_plan->fetch(); // Contains plan info AND user-specific overrides like can_manual_parse
 
     json_response($details);
 }
@@ -364,9 +364,21 @@ function handle_update_user_role()
 {
     global $pdo, $input;
     $target_uid = $input['uid'];
-    $is_premium = (bool) $input['isPremium'];
-    $stmt = $pdo->prepare("UPDATE users SET is_premium = ? WHERE id = ?");
-    $stmt->execute([$is_premium, $target_uid]);
+
+    // Check if updating can_manual_parse
+    if (isset($input['canManualParse'])) {
+        $can_manual_parse = (int) $input['canManualParse'];
+        $stmt = $pdo->prepare("UPDATE users SET can_manual_parse = ? WHERE id = ?");
+        $stmt->execute([$can_manual_parse, $target_uid]);
+    }
+
+    // Legacy support for is_premium if needed, though mostly moved to plans now.
+    if (isset($input['isPremium'])) {
+        $is_premium = (bool) $input['isPremium'];
+        $stmt = $pdo->prepare("UPDATE users SET is_premium = ? WHERE id = ?");
+        $stmt->execute([$is_premium, $target_uid]);
+    }
+
     json_response(['success' => true]);
 }
 

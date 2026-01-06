@@ -927,6 +927,18 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                             <strong>Expires On:</strong> ${planInfo.plan_expiry_date || 'N/A'}
                         </div>
                     </div>
+                    
+                    <div class="details-modal-section">
+                        <h4>User Permissions</h4>
+                        <div class="permissions-form" style="display: flex; align-items: center; gap: 10px; padding: 10px 0;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="checkbox" id="user-can-manual-parse" ${details.plan.can_manual_parse == 1 ? 'checked' : ''}>
+                                Enable Manual/Local Parsing
+                            </label>
+                            <button id="update-user-perms-btn" class="btn-primary btn-sm" data-uid="${uid}">Save Permissions</button>
+                        </div>
+                    </div>
+
                     <div class="details-modal-section">
                         <h4>Stores (${details.stores.length})</h4>
                         <table id="stores-details-table" class="display details-table" style="width:100%"></table>
@@ -1077,6 +1089,23 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                         }
                     });
             }
+
+            // Handle User Permission Update from User Details Modal
+            $('#user-details-modal').on('click', '#update-user-perms-btn', async function () {
+                const uid = $(this).data('uid');
+                const canManualParse = $('#user-can-manual-parse').is(':checked') ? 1 : 0;
+                const $btn = $(this);
+
+                $btn.prop('disabled', true).text('Saving...');
+                try {
+                    await apiCall('update_user_role', { uid, canManualParse });
+                    alert('Permissions updated successfully.');
+                } catch (e) {
+                    alert('Failed to update: ' + e.message);
+                } finally {
+                    $btn.prop('disabled', false).text('Save Permissions');
+                }
+            });
 
             $('#adminLoginBtn').on('click', async () => {
                 try {

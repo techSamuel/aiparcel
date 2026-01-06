@@ -145,6 +145,15 @@ function updateFeatureVisibilityBasedOnPlan() {
     $('#parseWithAIBtn').toggle(canParseAI);
     $('#parseAndAutocompleteBtn').toggle(userPermissions.can_autocomplete);
     $('#checkAllRiskBtn').toggle(userPermissions.can_check_risk);
+
+    // NEW: Control Visibility of Local Parsing Features
+    // Default is OFF unless explicitly enabled
+    const canManualParse = userPermissions.can_manual_parse === true;
+    $('#parseLocallyBtn').toggle(canManualParse);
+    $('#openSettingsModalBtn').toggle(canManualParse);
+
+    // Also hide the Smart Parse Toggle if they can't manual parse/settings
+    $('.toggle-switch-container').toggle(canManualParse);
 }
 
 function loadUserStores() {

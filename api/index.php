@@ -365,7 +365,8 @@ function load_user_data($user_id, $pdo)
                 p.can_autocomplete, 
                 p.can_check_risk, 
                 p.can_correct_address, 
-                p.can_show_ads
+                p.can_show_ads,
+                u.can_manual_parse
             FROM users u
             LEFT JOIN plans p ON u.plan_id = p.id
             WHERE u.id = ?
@@ -379,7 +380,8 @@ function load_user_data($user_id, $pdo)
             'can_autocomplete' => (bool) ($userData['can_autocomplete'] ?? false),
             'can_check_risk' => (bool) ($userData['can_check_risk'] ?? false),
             'can_correct_address' => (bool) ($userData['can_correct_address'] ?? false),
-            'can_show_ads' => (bool) ($userData['can_show_ads'] ?? false)
+            'can_show_ads' => (bool) ($userData['can_show_ads'] ?? false),
+            'can_manual_parse' => (bool) ($userData['can_manual_parse'] ?? false) // NEW Permission
         ];
 
         // --- THIS IS THE FIX ---
