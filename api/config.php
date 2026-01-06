@@ -44,4 +44,3 @@ function json_response($data, $status_code = 200)
     echo json_encode($data);
     exit;
 }
-?>

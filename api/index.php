@@ -1,7 +1,7 @@
 <?php
 session_start();
-require_once 'config.php';
 use PHPMailer\PHPMailer\PHPMailer;
+require_once 'config.php';
 use PHPMailer\PHPMailer\Exception;
 
 // Decode JSON input from the request body
