@@ -121,8 +121,8 @@ if (!defined('APP_URL')) {
         </div>
     </div>
 </div>
-<script src="assets/js/utils.js"></script>
-<script src="assets/js/auth.js"></script>
+<script src="assets/js/utils.js?v=<?php echo time(); ?>"></script>
+<script src="assets/js/auth.js?v=<?php echo time(); ?>"></script>
 <?php
 // Allow server-side switching to register tab if queried
 if (isset($_GET['mode']) && $_GET['mode'] === 'register') {
