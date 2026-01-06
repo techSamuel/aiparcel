@@ -332,40 +332,38 @@ function identifyAndParseOrder(orderText) {
         note: null
     };
 
-    let lines = orderText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    // --- PRE-PROCESSING: Convert ALL Bengali digits to English FIRST ---
+    let lines = orderText.split('\n').map(line => {
+        let converted = '';
+        for (const char of line.trim()) {
+            if (char >= '০' && char <= '৯') {
+                converted += String.fromCharCode(char.charCodeAt(0) - '০'.charCodeAt(0) + '0'.charCodeAt(0));
+            } else {
+                converted += char;
+            }
+        }
+        return converted;
+    }).filter(line => line.length > 0);
+
     if (lines.length === 0) return parsedData;
 
     const assignedLines = new Set();
 
     // --- PASS 1: Extract Phone Number (Highest Priority) ---
-    // BD phone: 11 digits starting with 01[3-9], optionally prefixed with +880 or 880
+    // Lines are already converted. Check for BD phone: 01X + 8 digits
     for (let i = 0; i < lines.length; i++) {
         if (assignedLines.has(i)) continue;
-        const originalLine = lines[i];
-        // Step 1: Convert Bengali digits to English
-        let normalized = '';
-        for (const char of originalLine) {
-            if (char >= '০' && char <= '৯') {
-                normalized += String.fromCharCode(char.charCodeAt(0) - '০'.charCodeAt(0) + '0'.charCodeAt(0));
-            } else {
-                normalized += char;
-            }
-        }
-        // Step 2: Remove spaces, dashes, and other separators
-        normalized = normalized.replace(/[\s\-\(\)\.]/g, '');
+        // Remove spaces, dashes, etc.
+        const normalized = lines[i].replace(/[\s\-\(\)\.]/g, '');
 
-        // Step 3: Check for BD phone patterns
-        // After normalization, valid patterns are:
+        // Valid BD phone patterns:
         // - 01XXXXXXXXX (11 digits)
         // - 8801XXXXXXXXX (13 digits)
         // - +8801XXXXXXXXX (14 chars)
         let phoneDigits = null;
         if (/^\+?880?0?1[3-9]\d{8}$/.test(normalized)) {
-            // Extract last 10 digits and prepend 0
             const match = normalized.match(/1[3-9]\d{8}$/);
-            if (match) {
-                phoneDigits = '0' + match[0];
-            }
+            if (match) phoneDigits = '0' + match[0];
         } else if (/^01[3-9]\d{8}$/.test(normalized)) {
             phoneDigits = normalized;
         }
@@ -378,28 +376,16 @@ function identifyAndParseOrder(orderText) {
     }
 
     // --- PASS 2: Extract Order ID (BEFORE Amount) ---
-    // Catch long digit strings (7+ digits that are NOT phones) and alphanumeric IDs
     for (let i = 0; i < lines.length; i++) {
         if (assignedLines.has(i)) continue;
-        const line = lines[i].trim();
-
-        // Convert Bengali digits for checking
-        let normalized = '';
-        for (const char of line) {
-            if (char >= '০' && char <= '৯') {
-                normalized += String.fromCharCode(char.charCodeAt(0) - '০'.charCodeAt(0) + '0'.charCodeAt(0));
-            } else {
-                normalized += char;
-            }
-        }
-        normalized = normalized.replace(/[\s\-]/g, '');
+        const line = lines[i];
+        const normalized = line.replace(/[\s\-]/g, '');
 
         // Skip if line has common address/name patterns
         if (/[,।]/.test(line) || /road|house|village|গ্রাম|রোড/i.test(line)) continue;
 
         // Pattern 1: Pure digit string with 7+ digits (but NOT a phone pattern)
         if (/^\d{7,}$/.test(normalized)) {
-            // Exclude phone patterns
             if (!/^0?1[3-9]\d{8}$/.test(normalized) && !/^880?1[3-9]\d{8}$/.test(normalized)) {
                 parsedData.orderId = normalized;
                 assignedLines.add(i);
@@ -419,23 +405,12 @@ function identifyAndParseOrder(orderText) {
     }
 
     // --- PASS 3: Extract Amount ---
-    // Max 6 digits, must have currency indicator OR be a standalone small number
     for (let i = 0; i < lines.length; i++) {
         if (assignedLines.has(i)) continue;
-        const line = lines[i].trim();
+        const line = lines[i];
 
-        // Convert Bengali digits
-        let normalized = '';
-        for (const char of line) {
-            if (char >= '০' && char <= '৯') {
-                normalized += String.fromCharCode(char.charCodeAt(0) - '০'.charCodeAt(0) + '0'.charCodeAt(0));
-            } else {
-                normalized += char;
-            }
-        }
-
-        // Match amount patterns
-        const amountMatch = normalized.match(/^(BDT|৳|Tk\.?|Cash|টাকা|taka)?[\s]*([\d]{1,6})([\.,]\d{1,2})?[\s]*(BDT|৳|Tk|টাকা|taka|\/-)?$/i);
+        // Match amount patterns (max 6 digits)
+        const amountMatch = line.match(/^(BDT|৳|Tk\.?|Cash|টাকা|taka)?[\s]*([\d]{1,6})([\.,]\d{1,2})?[\s]*(BDT|৳|Tk|টাকা|taka|\/-)?$/i);
         if (amountMatch && amountMatch[2]) {
             const potentialAmount = parseFloat(amountMatch[2] + (amountMatch[3] || '').replace(',', '.'));
             // Sanity check: COD amounts are typically 50-99999
