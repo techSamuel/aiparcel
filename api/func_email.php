@@ -87,3 +87,33 @@ function wrapInEmailTemplate($title, $message_content, $pdo)
 
     return $template;
 }
+
+
+function sendVerificationCodeEmail($to, $code, $pdo)
+{
+    $subject = "Verify Your Email Address";
+    $msg = "<p>Thank you for registering.</p>
+            <p>Please use the following verification code to activate your account:</p>
+            <h2 style='background: #f0f0f0; padding: 15px; display: inline-block; border-radius: 8px; letter-spacing: 5px; border: 1px solid #ddd;'>" . htmlspecialchars($code) . "</h2>
+            <p>If you did not request this code, please ignore this email.</p>";
+    $html = wrapInEmailTemplate($subject, $msg, $pdo);
+    return sendSystemEmail($to, $subject, $html);
+}
+
+function sendWelcomeEmail($to, $name, $pdo)
+{
+    $subject = "Welcome to AiParcel!";
+    $msg = "<p>Hello <strong>" . htmlspecialchars($name) . "</strong>,</p>
+            <p>Welcome to AiParcel! We are thrilled to have you on board.</p>
+            <p>With AiParcel, you can effortlessly manage your parcels, automate data entry with AI, and track your business growth.</p>
+            <p>Here are a few things you can do to get started:</p>
+            <ul>
+                <li><strong>Explore Dashboard:</strong> Get an overview of your orders and performance.</li>
+                <li><strong>Parse Parcels:</strong> Use our AI tools to process delivery addresses instantly.</li>
+                <li><strong>Customize Notes:</strong> Set up your note templates for faster processing.</li>
+            </ul>
+            <p>If you have any questions, feel free to reply to this email.</p>
+            <p><a href='" . APP_URL . "' class='button'>Go to Dashboard</a></p>";
+    $html = wrapInEmailTemplate($subject, $msg, $pdo);
+    return sendSystemEmail($to, $subject, $html);
+}
