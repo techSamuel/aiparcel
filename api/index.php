@@ -482,6 +482,7 @@ function parseWithAi($user_id, $input, $pdo)
     }
 
     // --- 4. Build prompt ---
+    // --- 4. Build prompt ---
     $prompt = <<<EOT
 You are an advanced parcel data parser. The input text contains details for multiple parcels.
 Your task is to identify and extract data for EACH separate parcel.
@@ -508,6 +509,46 @@ Rules:
 2. **Language**: Keep the output language consistent with the input (Bangla/English).
 3. **Address Correction**: If an address is partial (e.g., "Mirpur 10"), complete it logically (e.g., "Mirpur 10, Dhaka").
 4. **Output Format**: Return strictly a JSON Array of objects. No markdown, no code blocks, just the raw JSON string.
+
+Examples:
+
+Input:
+370.00
+কক্সবাজার মহেশখালী কালারমারছড়া নিউ মার্কেট। কালার মার ছড়া কক্সবাজার
+01344980362
+সাবধানে ডেলিভারী হবে। সাইজ ২ পিস
+FacebookManual297348732
+খাজা মাছুম কামাল
+৫৬ পিস দোয়া স্টিকার 2 সেট
+800
+হায়দারগঞ্জ বাংলাবাজার, রায়পুর, লক্ষ্মীপুর
+01724010212
+
+Output:
+[
+  {
+    "recipient_name": null,
+    "recipient_phone": "01344980362",
+    "recipient_address": "Kalarmarchhara New Market, Moheshkhali, Cox's Bazar",
+    "thana": "Moheshkhali",
+    "district": "Cox's Bazar",
+    "cod_amount": 370,
+    "order_id": null,
+    "item_description": "Size 2 pcs",
+    "note": "Deliver carefully"
+  },
+  {
+    "recipient_name": "Khaja Machum Kamal",
+    "recipient_phone": "01724010212",
+    "recipient_address": "Haiderganj Banglabazar, Raipur, Lakshmipur",
+    "thana": "Raipur",
+    "district": "Lakshmipur",
+    "cod_amount": 800,
+    "order_id": "FacebookManual297348732",
+    "item_description": "56 pcs Dua Sticker 2 Set",
+    "note": null
+  }
+]
 
 Input text:
 ---
