@@ -34,7 +34,8 @@ $isLoggedIn = isset($_SESSION['user_id']);
 // Force dashboard if logged in and trying to access auth/landing (unless action is logout, which is handled in JS/API)
 // But for cleaner URL handling:
 if ($isLoggedIn && ($page === 'auth' || $page === 'landing' || $page === '')) {
-    $page = 'dashboard';
+    header('Location: ?page=dashboard');
+    exit;
 } elseif (!$isLoggedIn && $page === '') {
     $page = 'landing';
 } elseif (!$isLoggedIn && $page === 'dashboard') {
@@ -93,4 +94,6 @@ if ($isLoggedIn && ($page === 'auth' || $page === 'landing' || $page === '')) {
     }
     ?>
 
-</body></html>
+</body>
+
+</html>
