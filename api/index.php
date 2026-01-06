@@ -1,4 +1,6 @@
 <?php
+// Set session cookie parameters specifically to root path
+session_set_cookie_params(0, '/');
 session_start();
 use PHPMailer\PHPMailer\PHPMailer;
 require_once 'config.php';

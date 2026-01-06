@@ -1754,6 +1754,7 @@ try {
 
             try {
                 const session = await apiCall('check_session');
+                console.log('Session check response:', session);
                 if (session.loggedIn && session.user) {
                     currentUser = session.user;
                     isPremiumUser = session.user.plan_id > 1;
@@ -2611,17 +2612,17 @@ try {
         function initSmartParseToggle() {
             const toggle = document.getElementById('smartParseToggle');
             if (currentUser && currentUser.parserSettings && typeof currentUser.parserSettings.smart_parsing !== 'undefined') {
-                 toggle.checked = currentUser.parserSettings.smart_parsing;
+                toggle.checked = currentUser.parserSettings.smart_parsing;
             } else {
-                 // Default to checked if not set
-                 toggle.checked = true;
+                // Default to checked if not set
+                toggle.checked = true;
             }
         }
-        
+
         // 2. Add Change Listener to Save State
-        document.getElementById('smartParseToggle').addEventListener('change', async function() {
+        document.getElementById('smartParseToggle').addEventListener('change', async function () {
             const isChecked = this.checked;
-            
+
             // Get existing settings or create new object
             let currentSettings = currentUser.parserSettings || {};
             currentSettings.smart_parsing = isChecked;
@@ -3242,7 +3243,7 @@ try {
                     const lines = block.split('\n').map(l => l.trim());
                     const parcelData = {};
                     currentParserFields.forEach((field, index) => {
-             if (lines[index]) parcelData[field.id] = lines[index];
+                        if (lines[index]) parcelData[field.id] = lines[index];
                     });
                     return parcelData;
                 });
