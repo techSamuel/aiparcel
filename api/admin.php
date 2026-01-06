@@ -695,7 +695,13 @@ function handle_manual_adjust_user()
         }
     }
 
-    $sql = "UPDATE users SET monthly_order_count = monthly_order_count + ?, monthly_ai_parsed_count = monthly_ai_parsed_count + ?";
+    $sql = "UPDATE users SET 
+            monthly_order_count = monthly_order_count + ?, 
+            monthly_ai_parsed_count = monthly_ai_parsed_count + ?,
+            alert_usage_order_75 = 0,
+            alert_usage_order_90 = 0,
+            alert_usage_ai_75 = 0,
+            alert_usage_ai_90 = 0";
     $params = [$order_delta, $ai_delta];
 
     if ($validity_delta != 0) {
