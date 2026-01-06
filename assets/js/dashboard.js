@@ -727,12 +727,19 @@ async function loadHistory(type, container) {
         history.forEach(item => {
             const date = new Date(item.timestamp).toLocaleString();
             let title = '';
-            if (type === 'parses') title = `Method: ${item.method} | ${JSON.parse(item.data).length} items`;
+            if (type === 'parses') title = `Method: ${item.method} | ${safeParse(item.data).length || 0} items`;
             else title = `Store: ${userCourierStores[item.store_id]?.storeName || 'N/A'}`;
-            $(container).append(`<div class="history-item"><div><p>${date}</p><p><strong>${title}</strong></p></div><button class="details-btn" data-type="${type}" data-item='${JSON.stringify(item)}'>Details</button></div>`);
+
+            // Escape single quotes for HTML attribute
+            const safeItemStr = JSON.stringify(item).replace(/'/g, "&apos;");
+
+            $(container).append(`<div class="history-item"><div><p>${date}</p><p><strong>${title}</strong></p></div><button class="details-btn" data-type="${type}" data-item='${safeItemStr}'>Details</button></div>`);
         });
     } catch (e) { $(container).html(`<p class="error">Could not load history.</p>`); }
 }
+
+// Helper needed for title length check above
+const safeParse = (str) => { try { return JSON.parse(str); } catch (e) { return []; } };
 $('#history-modal').on('click', '.details-btn', function () {
     try {
         const item = JSON.parse($(this).attr('data-item'));
