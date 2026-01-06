@@ -993,7 +993,7 @@ function updateRawTextPlaceholder() {
 
     if (useAutoParsing) {
         placeholderText = [
-            "Smart Auto-Parsing চালু আছে। তুমি যেকোনো ক্রমে ফিল্ড পেস্ট করতে পারো।",
+            "AI Smart Parsing Active. You can paste fields in any order.",
             "Example:",
             "Customer Name",
             "01xxxxxxxxx",
