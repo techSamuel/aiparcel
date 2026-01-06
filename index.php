@@ -1760,9 +1760,10 @@ try {
                     isPremiumUser = session.user.plan_id > 1;
 
                     document.body.className = 'show-app'; // Set class
-                    landingView.style.display = 'none';
-                    authContainer.style.display = 'none'; // Hide auth container
-                    appView.style.display = 'block'; // Show app view explicitly
+                    document.body.className = 'show-app'; // Set class
+                    landingView.style.setProperty('display', 'none', 'important');
+                    authContainer.style.setProperty('display', 'none', 'important'); // Hide auth container
+                    appView.style.setProperty('display', 'block', 'important'); // Show app view explicitly
                     await renderAppView();
                 } else {
                     const publicSettings = await apiCall('load_user_data');
