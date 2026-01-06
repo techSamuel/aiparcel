@@ -6,6 +6,7 @@
 
 session_start();
 require_once 'config.php';
+require_once 'func_email.php';
 
 // Check if we have an authorization code
 if (!isset($_GET['code'])) {
@@ -106,7 +107,7 @@ $displayName = $googleUser['name'] ?? explode('@', $email)[0];
 
 try {
     // Check if user exists by google_id
-    $stmt = $pdo->prepare("SELECT id, email, display_name, is_premium, is_admin FROM users WHERE google_id = ?");
+    $stmt = $pdo->prepare("SELECT id, email, display_name, is_premium, is_admin, first_login FROM users WHERE google_id = ?");
     $stmt->execute([$googleId]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -114,12 +115,20 @@ try {
         // Existing Google user - log them in
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['is_admin'] = (bool) $user['is_admin'];
+
+        // Send Welcome Email if first login (Legacy support or missed email)
+        if (isset($user['first_login']) && $user['first_login'] == 1) {
+            if (sendWelcomeEmail($email, $displayName, $pdo)) {
+                $pdo->prepare("UPDATE users SET first_login = 0 WHERE id = ?")->execute([$user['id']]);
+            }
+        }
+
         header('Location: ' . APP_URL . '/index.php?google_login=success');
         exit;
     }
 
     // Check if user exists by email (link Google account to existing)
-    $stmt = $pdo->prepare("SELECT id, email, display_name, is_premium, is_admin, google_id FROM users WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id, email, display_name, is_premium, is_admin, google_id, first_login FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -130,14 +139,27 @@ try {
 
         $_SESSION['user_id'] = $existingUser['id'];
         $_SESSION['is_admin'] = (bool) $existingUser['is_admin'];
+
+        // Send Welcome Email if first login
+        if (isset($existingUser['first_login']) && $existingUser['first_login'] == 1) {
+            if (sendWelcomeEmail($email, $existingUser['display_name'], $pdo)) {
+                $pdo->prepare("UPDATE users SET first_login = 0 WHERE id = ?")->execute([$existingUser['id']]);
+            }
+        }
+
         header('Location: ' . APP_URL . '/index.php?google_login=success');
         exit;
     }
 
     // New user - create account
-    $stmt = $pdo->prepare("INSERT INTO users (email, google_id, display_name, is_verified, plan_id) VALUES (?, ?, ?, 1, 1)");
+    $stmt = $pdo->prepare("INSERT INTO users (email, google_id, display_name, is_verified, plan_id, first_login) VALUES (?, ?, ?, 1, 1, 1)");
     $stmt->execute([$email, $googleId, $displayName]);
     $newUserId = $pdo->lastInsertId();
+
+    // Send Welcome Email Immediately
+    if (sendWelcomeEmail($email, $displayName, $pdo)) {
+        $pdo->prepare("UPDATE users SET first_login = 0 WHERE id = ?")->execute([$newUserId]);
+    }
 
     $_SESSION['user_id'] = $newUserId;
     $_SESSION['is_admin'] = false;
