@@ -64,6 +64,17 @@
                             <button id="update-user-perms-btn" class="btn-primary btn-sm" data-uid="${uid}">Save Permissions</button>
                         </div>
                     </div>
+                    <div class="details-modal-section">
+                        <h4>Manual Adjustments (Testing)</h4>
+                        <div style="background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                <div><label style="font-size: 11px; color: #666; display:block;">Order Limit (+/-)</label><input type="number" id="adj-order-delta" value="0" style="width: 100%; padding: 5px;"></div>
+                                <div><label style="font-size: 11px; color: #666; display:block;">AI Limit (+/-)</label><input type="number" id="adj-ai-delta" value="0" style="width: 100%; padding: 5px;"></div>
+                                <div><label style="font-size: 11px; color: #666; display:block;">Validity Days (+/-)</label><input type="number" id="adj-validity-delta" value="0" style="width: 100%; padding: 5px;"></div>
+                            </div>
+                            <button id="btn-manual-adjust" class="btn-primary btn-sm" data-uid="${uid}" style="width: 100%;">Apply Adjustments</button>
+                        </div>
+                    </div>
                     <div class="details-modal-section"><h4>Stores (${details.stores.length})</h4><table id="stores-details-table" class="display details-table" style="width:100%"></table></div>
                     <div class="details-modal-section"><h4>Recent Parses (${details.parses.length})</h4><table id="parses-details-table" class="display details-table" style="width:100%"></table></div>
                     <div class="details-modal-section"><h4>Recent Orders (${details.orders.length})</h4><table id="orders-details-table" class="display details-table" style="width:100%"></table></div>
@@ -122,6 +133,24 @@
             const plan_id = $('#admin-user-plan-select').val();
             if (!confirm('Change plan? This resets validity/quotas.')) return;
             try { await apiCall('update_user_plan', { uid, plan_id }); alert('Plan updated.'); $('#user-details-modal').hide(); } catch (e) { alert('Failed: ' + e.message); }
+        });
+
+        $('#user-details-modal').on('click', '#btn-manual-adjust', async function() {
+            const uid = $(this).data('uid');
+            const order_delta = $('#adj-order-delta').val();
+            const ai_delta = $('#adj-ai-delta').val();
+            const validity_delta = $('#adj-validity-delta').val();
+            
+            if (order_delta == 0 && ai_delta == 0 && validity_delta == 0) return alert('Please enter at least one adjustment value.');
+            if (!confirm('Apply these manual adjustments?')) return;
+            
+            try {
+                await apiCall('manual_adjust_user', { uid, order_delta, ai_delta, validity_delta });
+                alert('Adjustments applied successfully.');
+                $('#user-details-modal').hide();
+            } catch(e) {
+                alert('Failed: ' + e.message);
+            }
         });
     });
 </script>

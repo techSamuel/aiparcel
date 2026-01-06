@@ -71,6 +71,9 @@ switch ($action) {
     case 'update_user_plan':
         handle_update_user_plan();
         break;
+    case 'manual_adjust_user':
+        handle_manual_adjust_user();
+        break;
     case 'get_settings':
         handle_get_settings();
         break;
@@ -667,4 +670,42 @@ function handle_send_test_email()
     } else {
         json_response(['error' => 'Failed to send email. Check server logs for details.'], 500);
     }
+}
+
+function handle_manual_adjust_user()
+{
+    global $input, $pdo;
+    $user_id = $input['uid'];
+    $order_delta = (int) ($input['order_delta'] ?? 0);
+    $ai_delta = (int) ($input['ai_delta'] ?? 0);
+    $validity_delta = (int) ($input['validity_delta'] ?? 0);
+
+    // Fetch current expiry
+    $stmt = $pdo->prepare("SELECT plan_expiry_date FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $current_expiry = $stmt->fetchColumn();
+
+    $new_expiry = $current_expiry;
+    if ($validity_delta != 0) {
+        if (!$current_expiry) {
+            // If no expiry (e.g. Free plan), set based on today
+            $new_expiry = date('Y-m-d', strtotime("+$validity_delta days"));
+        } else {
+            $new_expiry = date('Y-m-d', strtotime($current_expiry . " +$validity_delta days"));
+        }
+    }
+
+    $sql = "UPDATE users SET extra_order_limit = extra_order_limit + ?, extra_ai_parsed_limit = extra_ai_parsed_limit + ?";
+    $params = [$order_delta, $ai_delta];
+
+    if ($validity_delta != 0) {
+        $sql .= ", plan_expiry_date = ?";
+        $params[] = $new_expiry;
+    }
+
+    $sql .= " WHERE id = ?";
+    $params[] = $user_id;
+
+    $pdo->prepare($sql)->execute($params);
+    json_response(['success' => true]);
 }
