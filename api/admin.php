@@ -136,17 +136,7 @@ function handle_login()
             'displayName' => $user['display_name']
         ]);
     } else {
-        // DEBUG
-        $debug = "Login Failed. ";
-        if (!$user)
-            $debug .= "User not found. ";
-        else {
-            if (!password_verify($password, $user['password']))
-                $debug .= "Password mismatch. ";
-            if (!$user['is_admin'])
-                $debug .= "Not admin (val: " . var_export($user['is_admin'], true) . "). ";
-        }
-        json_response(['error' => $debug], 401);
+        json_response(['error' => 'Invalid admin credentials.'], 401);
     }
 }
 
