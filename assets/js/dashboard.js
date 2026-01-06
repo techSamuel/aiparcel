@@ -338,53 +338,60 @@ function identifyAndParseOrder(orderText) {
     const assignedLines = new Set();
 
     // --- PASS 1: Extract Phone Number (Highest Priority) ---
-    // Matches +880, 880, or 01X followed by 8-9 digits, with optional spaces/dashes.
-    const phoneRegex = /^(\+?880|০?)?[0]?1[3-9][0-9\s\-]{7,10}$/;
+    // Normalize Bengali digits FIRST, then check for BD phone pattern.
     for (let i = 0; i < lines.length; i++) {
         if (assignedLines.has(i)) continue;
-        const normalizedLine = convertBengaliToEnglish(lines[i].replace(/[\s\-]/g, ''));
-        // A phone number line should primarily be digits after normalization
-        if (phoneRegex.test(lines[i]) || /^(\+?880)?01[3-9]\d{8}$/.test(normalizedLine)) {
+        const normalizedLine = convertBengaliToEnglish(lines[i]).replace(/[\s\-]/g, '');
+        // BD phone: optionally starts with +880 or 880, then 01X followed by 8 digits (total 11 digits)
+        if (/^(\+?880)?0?1[3-9]\d{8}$/.test(normalizedLine)) {
             parsedData.customerPhone = normalizePhoneNumber(normalizedLine);
             assignedLines.add(i);
             break; // Only one phone per order
         }
     }
 
-    // --- PASS 2: Extract Amount (High Priority) ---
-    // Matches: ৳1500, 1500/-, 1500 tk, Cash 1500, 1500 (if standalone number)
-    const amountKeywords = /^(BDT|৳|Tk\.?|Cash|টাকা|taka)?[\s]*(\d+[\.,]?\d*)([\s]*(BDT|৳|Tk|টাকা|taka|\/-)?)?$/i;
+    // --- PASS 2: Extract Order ID (BEFORE Amount to prevent long numbers being misclassified) ---
     for (let i = 0; i < lines.length; i++) {
         if (assignedLines.has(i)) continue;
-        const normalizedLine = convertBengaliToEnglish(lines[i]);
-        const match = normalizedLine.match(amountKeywords);
-        // Check if it's a plausible amount (e.g., a number, possibly with currency symbol)
-        // Avoid matching things that are clearly not amounts (like phone numbers already matched)
-        if (match && match[2]) {
-            const potentialAmount = parseFloat(match[2].replace(',', '.'));
-            // Sanity check: amounts are usually between 50 and 100000
-            if (potentialAmount >= 10 && potentialAmount <= 500000) {
-                parsedData.amount = potentialAmount;
+        const line = lines[i].trim();
+        const normalizedLine = convertBengaliToEnglish(line);
+
+        // Skip if line has common address/name patterns
+        if (/[,।]/.test(line) || /road|house|village|গ্রাম|রোড/i.test(line)) continue;
+
+        // Pattern 1: Long digit-only string (10+ digits, likely timestamp/ID, NOT a phone)
+        if (/^\d{10,}$/.test(normalizedLine) && !parsedData.customerPhone) {
+            // If it looks like a phone (01X pattern), skip
+            if (!/^0?1[3-9]\d{8}$/.test(normalizedLine)) {
+                parsedData.orderId = normalizedLine;
                 assignedLines.add(i);
-                break; // Only one amount per order
+                continue;
+            }
+        }
+
+        // Pattern 2: Alphanumeric with prefixes like ORD-, INV-, #
+        const orderIdMatch = line.match(/^(order|id|ref|inv|oid|#)?[\s:\-#]*([A-Za-z0-9\-\_]{6,30})$/i);
+        if (orderIdMatch && orderIdMatch[2]) {
+            if (/\d/.test(orderIdMatch[2]) || orderIdMatch[2].length >= 10) {
+                parsedData.orderId = orderIdMatch[2];
+                assignedLines.add(i);
+                break;
             }
         }
     }
 
-    // --- PASS 3: Extract Order ID ---
-    // Matches: ORD-XXX, INV-XXX, #XXX, or alphanumeric strings 8+ chars (but not too long)
-    const orderIdRegex = /^(order|id|ref|inv|oid|#)?[\s:\-#]*([A-Za-z0-9\-\_]{6,30})$/i;
+    // --- PASS 3: Extract Amount ---
+    // Matches: ৳1500, 1500/-, 1500 tk, Cash 1500. Max 6 digits to avoid matching order IDs.
+    const amountKeywords = /^(BDT|৳|Tk\.?|Cash|টাকা|taka)?[\s]*(\d{1,6})([\.,]\d{1,2})?[\s]*(BDT|৳|Tk|টাকা|taka|\/-)?$/i;
     for (let i = 0; i < lines.length; i++) {
         if (assignedLines.has(i)) continue;
-        const line = lines[i];
-        // Skip if line has common address/name patterns
-        if (/[,।]/.test(line) || /road|house|village|গ্রাম|রোড/i.test(line)) continue;
-
-        const match = line.match(orderIdRegex);
+        const normalizedLine = convertBengaliToEnglish(lines[i]);
+        const match = normalizedLine.match(amountKeywords);
         if (match && match[2]) {
-            // Ensure it's not just a simple name (e.g., "John Doe")
-            if (/\d/.test(match[2]) || match[2].length >= 10) {
-                parsedData.orderId = match[2];
+            const potentialAmount = parseFloat(match[2] + (match[3] || '').replace(',', '.'));
+            // Sanity check: amounts are usually between 50 and 100000
+            if (potentialAmount >= 10 && potentialAmount <= 100000) {
+                parsedData.amount = potentialAmount;
                 assignedLines.add(i);
                 break;
             }
