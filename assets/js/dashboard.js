@@ -182,7 +182,9 @@ function createParcelCard(parcelData) {
     const customerName = parcelData.recipient_name || parcelData.customerName || 'NoNamedCustomer'; // Default Name
     // PROCESSED: Convert Bengali numerals to English for Phone and Amount
     const phoneRaw = parcelData.recipient_phone || parcelData.phone || parcelData.customerPhone || 'N/A';
-    const phone = convertBengaliToEnglishNumerals(phoneRaw);
+    // 1. Convert Bengali -> English
+    // 2. Normalize (Remove +88/88)
+    const phone = normalizePhoneNumber(convertBengaliToEnglishNumerals(phoneRaw));
 
     const address = parcelData.recipient_address || parcelData.address || parcelData.customerAddress || 'N/A';
     const orderId = parcelData.order_id || parcelData.orderId || 'N/A';
