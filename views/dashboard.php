@@ -207,5 +207,5 @@ if (!defined('APP_URL')) {
     </a>
 </div>
 
-<script src="assets/js/utils.js"></script>
+<script src="assets/js/utils.js?v=<?php echo time(); ?>"></script>
 <script src="assets/js/dashboard.js?v=<?php echo time(); ?>"></script>
