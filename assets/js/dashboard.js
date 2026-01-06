@@ -178,20 +178,29 @@ function updateSummary() {
 
 // --- PARCEL & CARD LOGIC ---
 function createParcelCard(parcelData) {
-    // Debug: Log incoming data to ensure keys match
-    console.log("createParcelCard received:", parcelData);
-
-    const customerName = parcelData.recipient_name || parcelData.customerName || 'N/A';
+    // --- Validation Logic ---
+    const customerName = parcelData.recipient_name || parcelData.customerName || 'NoNamedCustomer'; // Default Name
     const phone = parcelData.recipient_phone || parcelData.phone || parcelData.customerPhone || 'N/A';
     const address = parcelData.recipient_address || parcelData.address || parcelData.customerAddress || 'N/A';
     const orderId = parcelData.order_id || parcelData.orderId || 'N/A';
-    const amount = parcelData.cod_amount || parcelData.amount || 0;
+    const amount = parseFloat(parcelData.cod_amount || parcelData.amount || 0);
     const productName = parcelData.item_description || parcelData.productName || 'N/A';
     const note = parcelData.note || 'N/A';
 
     const card = $(`<div class="parcel-card"></div>`).data('orderData', JSON.stringify(parcelData));
     const phoneForCheck = (phone || '').replace(/\s+/g, '');
     const isPhoneValid = /^01[3-9]\d{8}$/.test(phoneForCheck);
+
+    // Strict Validation: Phone, Address, Price, and Name (implicitly handled by default)
+    const isAddressValid = address && address !== 'N/A' && address !== 'null' && address.length > 5;
+    const isPriceValid = !isNaN(amount) && amount > 0;
+
+    // Check if mandatory fields are missing/invalid
+    const isInvalid = !isPhoneValid || !isAddressValid || !isPriceValid;
+
+    if (isInvalid) {
+        card.addClass('invalid-parcel');
+    }
 
     const checkRiskDisabled = !isPhoneValid || !userPermissions.can_check_risk;
     const checkRiskTitle = !userPermissions.can_check_risk ? 'This is a premium feature.' : 'Check customer risk';
@@ -212,6 +221,20 @@ function createParcelCard(parcelData) {
         <div class="fraud-results-container" style="display: none;"></div>
     `);
     parsedDataContainer.appendChild(card[0]);
+    validateAllParcels(); // Update button state
+}
+
+// --- Validation Helper ---
+function validateAllParcels() {
+    const invalidCards = $('.parcel-card.invalid-parcel').length;
+    const createBtn = $('#createOrderBtn');
+    if (invalidCards > 0) {
+        createBtn.prop('disabled', true).text(`Fix ${invalidCards} Invalid Parcel(s)`);
+        createBtn.css('opacity', '0.6').css('cursor', 'not-allowed');
+    } else {
+        createBtn.prop('disabled', false).text('Create Orders');
+        createBtn.css('opacity', '1').css('cursor', 'pointer');
+    }
 }
 
 async function correctSingleAddress(buttonElement) {
@@ -237,6 +260,24 @@ async function correctSingleAddress(buttonElement) {
             $card.data('orderData', JSON.stringify(parcelData));
             $addressTextSpan.text(result.corrected_address);
             $button.text('Corrected ✔️');
+
+            // Re-validate after correction
+            const address = result.corrected_address;
+            const isAddressValid = address && address !== 'N/A' && address !== 'null' && address.length > 5;
+
+            // Re-check other mandatory fields from data
+            const phoneForCheck = (parcelData.recipient_phone || parcelData.phone || parcelData.customerPhone || '').replace(/\s+/g, '');
+            const isPhoneValid = /^01[3-9]\d{8}$/.test(phoneForCheck);
+            const amount = parseFloat(parcelData.cod_amount || parcelData.amount || 0);
+            const isPriceValid = !isNaN(amount) && amount > 0;
+
+            if (isAddressValid && isPhoneValid && isPriceValid) {
+                $card.removeClass('invalid-parcel');
+            } else {
+                // Keep it invalid (maybe phone/price are also bad)
+            }
+            validateAllParcels();
+
         } else { throw new Error("AI did not return a corrected address."); }
     } catch (error) {
         alert(`Error correcting address: ${error.message}`);
@@ -645,6 +686,7 @@ $('#history-modal').on('click', '.details-btn', function () {
 $('#parsedDataContainer').on('click', '.remove-btn', function () {
     $(this).closest('.parcel-card').remove();
     updateSummary();
+    validateAllParcels();
 }).on('click', '.check-risk-btn', function () {
     checkFraudRisk(this);
 }).on('click', '.correct-address-btn', function () {
