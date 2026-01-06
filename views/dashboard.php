@@ -76,6 +76,30 @@ if (!defined('APP_URL')) {
             <div class="summary-item">Total COD: <span id="totalCod">0 BDT</span></div>
         </div>
         <label style="margin-top: 15px;">Review Parsed Parcels</label>
+
+        <!-- Custom Note Builder (New Feature) -->
+        <div class="custom-note-builder"
+            style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 10px; margin-bottom: 15px; border-radius: 6px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <strong style="font-size: 14px; white-space: nowrap;">Bulk Note:</strong>
+                <input type="text" id="customNoteTemplate"
+                    placeholder="Type text or select variable (e.g. ID: {order_id})" style="flex: 2; min-width: 200px;">
+                <select id="customNoteVariable" style="flex: 1; min-width: 150px;">
+                    <option value="">+ Insert Variable</option>
+                    <option value="{order_id}">Order ID</option>
+                    <option value="{name}">Recipient Name</option>
+                    <option value="{phone}">Phone Number</option>
+                    <option value="{address}">Address</option>
+                    <option value="{product}">Product Details</option>
+                    <option value="{note}">Existing Note</option>
+                </select>
+                <button id="applyCustomNoteBtn" class="btn-sm btn-primary">Apply to All</button>
+            </div>
+            <div style="font-size: 11px; color: #666; margin-top: 4px;">
+                Use variables to dynamically insert data from each parcel. Appends/Replaces the note field.
+            </div>
+        </div>
+
         <div id="parsedDataContainer"></div>
         <button id="createOrderBtn">Create Order(s)</button>
         <div class="loader" id="loader"></div>

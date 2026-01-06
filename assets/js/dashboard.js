@@ -247,6 +247,9 @@ function createParcelCard(parcelData) {
             <strong>${customerName}</strong> (${phone})<br>
             Address: <span class="address-text">${address}</span><br>
             OrderID: ${orderId} | COD: <strong>${amount} BDT</strong> | Item: ${productName}
+            <div style="margin-top: 5px;">
+                <input type="text" class="input-note" value="${note !== 'N/A' ? note : ''}" placeholder="Add Note..." style="width: 100%; border: 1px solid #ddd; padding: 4px; font-size: 12px; border-radius: 4px;">
+            </div>
         </div>
         <div class="parcel-actions">
             <button class="check-risk-btn" data-phone="${phoneForCheck}" ${checkRiskDisabled ? 'disabled' : ''} title="${checkRiskTitle}">Check Risk</button>
@@ -255,6 +258,15 @@ function createParcelCard(parcelData) {
         </div>
         <div class="fraud-results-container" style="display: none;"></div>
     `);
+
+    // Sync Note Input with Data
+    card.find('.input-note').on('input', function () {
+        const newData = JSON.parse(card.attr('data-order-data'));
+        newData.note = $(this).val();
+        card.attr('data-order-data', JSON.stringify(newData));
+        card.data('orderData', JSON.stringify(newData));
+    });
+
     parsedDataContainer.appendChild(card[0]);
     validateAllParcels(); // Update button state
     updateSummary(); // Update totals
@@ -1062,4 +1074,78 @@ $('#submit-payment-btn').on('click', async function () {
         setTimeout(() => $('#upgrade-modal').hide(), 4000);
     } catch (e) { showMessage(document.getElementById('upgrade-message'), e.message, 'error'); }
     finally { $button.prop('disabled', false); $loader.hide(); }
+});
+// Custom Note Builder Logic
+$(document).ready(function () {
+    $('#customNoteVariable').on('change', function () {
+        const val = $(this).val();
+        if (val) {
+            const $input = $('#customNoteTemplate');
+            $input.val($input.val() + val);
+            $(this).val(''); // Reset dropdown
+            $input.focus();
+        }
+    });
+
+    $('#applyCustomNoteBtn').on('click', function () {
+        const template = $('#customNoteTemplate').val();
+        if (!template) {
+            return alert('Please enter a note template first.');
+        }
+
+        // Check if there are parsed parcels
+        const $cards = $('.parcel-card');
+        if ($cards.length === 0) {
+            return alert('No parsed parcels to update.');
+        }
+
+        let updatedCount = 0;
+
+        $cards.each(function (index) {
+            const $card = $(this);
+            // Get current data
+            // We need access to the FULL data. The card stores it in data-order-data attribute
+            // Note: data() pulls from cache, attr() pulls from DOM. Best to keep both in sync or update attr for persistence logic if re-read
+            let rawAttr = $card.attr('data-order-data');
+            let data = {};
+            try { data = JSON.parse(rawAttr); } catch (e) { }
+
+            // Re-construct note
+            let note = template;
+            // Replacements
+            note = note.replace(/{order_id}/g, data.order_id || data.orderId || '');
+            note = note.replace(/{name}/g, data.recipient_name || data.customerName || '');
+            note = note.replace(/{phone}/g, data.recipient_phone || data.phone || '');
+            note = note.replace(/{address}/g, data.recipient_address || data.address || '');
+            note = note.replace(/{product}/g, data.item_description || data.productName || '');
+
+            // Special case for {note}: If the template contains {note}, we replace it with the ORIGINAL note.
+            // If the user runs this multiple times, {note} would grab the CURRENT note (which might be the custom one).
+            // This is "recursive" behavior which might be desired or messy.
+            // Assuming "note" means the *original* note found by AI. 
+            // But 'data.note' is currently mutable.
+            // However, typical use case: "Add 'Check' before existing note". 
+            note = note.replace(/{note}/g, data.note || '');
+
+            // Clean up double spaces or generic mess
+            note = note.trim();
+
+            // Update Data Object
+            data.note = note;
+
+            // Update DOM attribute (essential for Create Order to pick it up)
+            $card.attr('data-order-data', JSON.stringify(data));
+            $card.data('orderData', JSON.stringify(data)); // Update jQuery cache too just in case
+
+            // Update Input Field in Card
+            $card.find('.input-note').val(note);
+
+            updatedCount++;
+        });
+
+        // Show success, but small non-blocking toast would be better. Alert is fine for now.
+        // Using a custom notification helper if available, or just console log/alert.
+        // showMessage is defined in Line 1061? No, it's used there. I'll stick to alert or console.
+        alert(`Updated notes for ${updatedCount} parcels.`);
+    });
 });
