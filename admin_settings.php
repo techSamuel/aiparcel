@@ -143,6 +143,8 @@
                 let html = '<strong>Result:</strong> ' + (data.success ? '<span style="color:green">Success</span>' : '<span style="color:red">Failed</span>') + '<br>';
                 if (data.log && data.log.length) {
                     html += '<ul style="padding-left: 20px; margin: 5px 0;">' + data.log.map(l => `<li>${l}</li>`).join('') + '</ul>';
+                } else if (data.error) {
+                    html += '<div style="color:red; margin:5px 0;"><strong>Error:</strong> ' + data.error + '</div>';
                 } else {
                     html += '<em>No actions taken (no expired users or warnings).</em>';
                 }

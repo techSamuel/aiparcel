@@ -12,6 +12,24 @@ $today = date('Y-m-d');
 $log = [];
 
 try {
+    // --- 0. Schema Self-Check (Auto-Migrate) ---
+    // Ensure all required columns exist to prevent crashes
+    try {
+        $stmt_check = $pdo->query("SHOW COLUMNS FROM users LIKE 'extra_order_limit'");
+        if ($stmt_check->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN extra_order_limit INT DEFAULT 0 AFTER monthly_order_count");
+            $pdo->exec("ALTER TABLE users ADD COLUMN extra_ai_parsed_limit INT DEFAULT 0 AFTER monthly_ai_parsed_count");
+        }
+        $stmt_check_alerts = $pdo->query("SHOW COLUMNS FROM users LIKE 'alert_usage_order_75'");
+        if ($stmt_check_alerts->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN alert_usage_order_75 TINYINT DEFAULT 0");
+            $pdo->exec("ALTER TABLE users ADD COLUMN alert_usage_order_90 TINYINT DEFAULT 0");
+            $pdo->exec("ALTER TABLE users ADD COLUMN alert_usage_ai_75 TINYINT DEFAULT 0");
+            $pdo->exec("ALTER TABLE users ADD COLUMN alert_usage_ai_90 TINYINT DEFAULT 0");
+        }
+    } catch (Exception $mig_err) { /* Ignore migration errors, proceed */
+    }
+
     // --- 1. Auto-Demotion (Expired Plans) ---
     // Find Free Plan ID
     $stmt_free = $pdo->prepare("SELECT id FROM plans WHERE name = 'Free' LIMIT 1");
