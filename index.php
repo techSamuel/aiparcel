@@ -2078,8 +2078,8 @@ try {
 
             initSmartParseToggle(); // --- NEW: Init toggle state ---
 
-            currentParserFields = (data.parserSettings !== null && typeof data.parserSettings !== 'undefined')
-                ? data.parserSettings  // Use saved settings (even if it's an empty [])
+            currentParserFields = (Array.isArray(data.parserSettings) && data.parserSettings.length > 0)
+                ? data.parserSettings  // Use saved settings
                 : [...DEFAULT_PARSER_FIELDS];
             renderParserFields();
         }
