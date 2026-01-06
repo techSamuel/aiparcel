@@ -1940,7 +1940,9 @@ function correct_single_address_with_ai($user_id, $input, $pdo)
     curl_close($ch);
 
     if ($http_code >= 400) {
-        json_response(['error' => 'The AI API returned an error.' . $gemini_api_key, 'details' => json_decode($response_body, true)], $http_code);
+        $error_details = json_decode($response_body, true);
+        $error_msg = $error_details['error']['message'] ?? 'Unknown API error';
+        json_response(['error' => 'The AI API returned an error: ' . $error_msg], $http_code);
     }
 
     // 5. Parse and clean the AI response
