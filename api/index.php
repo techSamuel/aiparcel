@@ -523,7 +523,7 @@ $raw_text
 EOT;
 
 
-    $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' . $gemini_api_key;
+    $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
     // Optimization: Use native JSON mode for faster and stricter output
     $api_body = [
         'contents' => [['parts' => [['text' => $prompt]]]],
@@ -605,7 +605,7 @@ function correct_addresses_with_ai($user_id, $input, $pdo)
     // to improve accuracy and prevent the AI from adding information that isn't there.
     $prompt = "Complete and Correct this address show only address output no other texts in fomat of address, thana/upazila, District. Either bangla or English according to input" . json_encode($addresses, JSON_UNESCAPED_UNICODE);
 
-    $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' . $gemini_api_key;
+    $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
     $api_body = ['contents' => [['parts' => [['text' => $prompt]]]]];
 
     // --- 5. Send request to Gemini API ---
@@ -1948,7 +1948,7 @@ function correct_single_address_with_ai($user_id, $input, $pdo)
     // 3. Refined prompt for a single address
     $prompt = "You are an expert address corrector for Bangladesh. Your task is to correct and complete the following address. Format the output as a single, clean line: Full Address, Thana/Upazila, District. Do not add any extra text, labels, or markdown formatting. Just return the corrected address string. The input language can be English or Bengali; match the output language to the input language.\n\nInput Address: \"" . $address . "\"\n\nCorrected Address:";
 
-    $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' . $gemini_api_key;
+    $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
     $api_body = ['contents' => [['parts' => [['text' => $prompt]]]]];
 
     // 4. Send request to Gemini API
