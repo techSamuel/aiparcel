@@ -51,6 +51,33 @@
         <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Settings</button>
     </form>
 </div>
+<div class="card settings-form" style="margin-top: 20px;">
+    <h2>System Testing & Maintenance</h2>
+
+    <div style="margin-bottom: 20px;">
+        <h3>Run Daily Maintenance (Cron)</h3>
+        <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">Manually trigger the daily cron job. This will
+            check for expired plans (demote users) and send expiration warning emails.</p>
+        <button type="button" id="btnRunCron" class="btn-primary" style="background-color: #6c757d;">Run Daily
+            Maintenance Now</button>
+        <div id="cronOutput"
+            style="margin-top: 10px; display: none; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; font-size: 0.9em;">
+        </div>
+    </div>
+
+    <hr style="margin: 20px 0;">
+
+    <div>
+        <h3>Send Test Email</h3>
+        <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">Send a test email to verify your SMTP
+            configuration.</p>
+        <div style="display: flex; gap: 10px; max-width: 500px;">
+            <input type="email" id="testEmailInput" placeholder="Enter recipient email"
+                style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <button type="button" id="btnSendTestEmail" class="btn-primary">Send Test Email</button>
+        </div>
+    </div>
+</div>
 <?php include 'includes/admin_footer.php'; ?>
 <script>
     $(document).ready(function () {
@@ -98,5 +125,52 @@
                 loadSettings();
             } catch (e) { alert('Error saving settings: ' + e.message); }
         });
+
+
+    // Run Cron
+    $('#btnRunCron').click(async function () {
+        if (!confirm('Are you sure? This will execute real database changes (Demotion/Emails).')) return;
+        const btn = $(this);
+        btn.prop('disabled', true).text('Running...');
+        $('#cronOutput').hide().html('');
+
+        try {
+            // Determine API URL (handle potential subdirectory issues)
+            const res = await fetch('api/cron.php');
+            const data = await res.json();
+
+            let html = '<strong>Result:</strong> ' + (data.success ? '<span style="color:green">Success</span>' : '<span style="color:red">Failed</span>') + '<br>';
+            if (data.log && data.log.length) {
+                html += '<ul style="padding-left: 20px; margin: 5px 0;">' + data.log.map(l => `<li>${l}</li>`).join('') + '</ul>';
+            } else {
+                html += '<em>No actions taken (no expired users or warnings).</em>';
+            }
+            $('#cronOutput').html(html).show();
+        } catch (e) {
+            $('#cronOutput').html('<span style="color:red">Error: ' + e.message + '</span>').show();
+        } finally {
+            btn.prop('disabled', false).text('Run Daily Maintenance Now');
+        }
     });
+
+    // Test Email
+    $('#btnSendTestEmail').click(async function () {
+        const email = $('#testEmailInput').val();
+        if (!email) return alert('Please enter an email address.');
+
+        const btn = $(this);
+        const originalText = btn.text();
+        btn.prop('disabled', true).text('Sending...');
+
+        try {
+            await apiCall('send_test_email', { email: email });
+            alert('Test email sent successfully!');
+        } catch (e) {
+            alert('Failed: ' + e.message);
+        } finally {
+            btn.prop('disabled', false).text(originalText);
+        }
+    });
+    });
+});
 </script>

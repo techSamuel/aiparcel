@@ -80,6 +80,9 @@ switch ($action) {
     case 'update_profile':
         handle_update_profile();
         break;
+    case 'send_test_email':
+        handle_send_test_email();
+        break;
     default:
         json_response(['error' => 'Invalid action'], 400);
 }
@@ -639,3 +642,29 @@ function handle_update_user_plan()
     json_response(['success' => true]);
 }
 
+
+
+function handle_send_test_email()
+{
+    global $input, $pdo;
+    $email = $input['email'] ?? '';
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        json_response(['error' => 'Invalid email address.'], 400);
+    }
+
+    require_once __DIR__ . '/func_email.php';
+
+    // Fetch App Name
+    $stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'app_name'");
+    $app_name = $stmt->fetchColumn() ?: 'AiParcel';
+
+    $subject = "Test Email from $app_name";
+    $body = "<p>This is a test email sent from the Admin Panel system tools.</p><p>If you received this, your SMTP configuration is working correctly.</p>";
+    $html = wrapInEmailTemplate($subject, $body, $pdo);
+
+    if (sendSystemEmail($email, $subject, $html)) {
+        json_response(['success' => true]);
+    } else {
+        json_response(['error' => 'Failed to send email. Check server logs for details.'], 500);
+    }
+}
