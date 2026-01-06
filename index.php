@@ -12,6 +12,22 @@ require_once 'api/config.php';
 $appName = "AiParcel";
 $appLogoUrl = "https://i.ibb.co/6803876/Ai-Parcel-Logo-Full.png";
 
+try {
+    $stmt = $pdo->prepare("SELECT app_name, app_logo_url FROM settings LIMIT 1");
+    $stmt->execute();
+    $settings = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($settings) {
+        if (!empty($settings['app_name'])) {
+            $appName = $settings['app_name'];
+        }
+        if (!empty($settings['app_logo_url'])) {
+            $appLogoUrl = $settings['app_logo_url'];
+        }
+    }
+} catch (Exception $e) {
+    // Fallback to defaults
+}
+
 // Page Router Logic
 $page = isset($_GET['page']) ? $_GET['page'] : '';
 $isLoggedIn = isset($_SESSION['user_id']);
