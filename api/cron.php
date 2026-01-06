@@ -48,9 +48,10 @@ try {
                     <p>You have been automatically moved to the <strong>Free Plan</strong>.</p>
                     <p>To continue using premium limits and features, please <a href='" . APP_URL . "'>upgrade your plan</a>.</p>";
             $html = wrapInEmailTemplate($subject, $msg, $pdo);
-            sendSystemEmail($user['email'], $subject, $html);
+            $html = wrapInEmailTemplate($subject, $msg, $pdo);
+            $sent = sendSystemEmail($user['email'], $subject, $html);
 
-            $log[] = "Demoted User ID {$user['id']} to Free.";
+            $log[] = "Demoted User ID {$user['id']} to Free. Email Sent: " . ($sent ? 'Yes' : 'No');
         }
     }
 
@@ -70,8 +71,9 @@ try {
                      <p>Please renew your subscription now to avoid service interruption or demotion to the Free plan.</p>
                      <p><a href='" . APP_URL . "' class='button'>Renew Subscription</a></p>";
             $html = wrapInEmailTemplate($subject, $msg, $pdo);
-            sendSystemEmail($user['email'], $subject, $html);
-            $log[] = "Sent $days-day warning to User ID {$user['id']}.";
+            $html = wrapInEmailTemplate($subject, $msg, $pdo);
+            $sent = sendSystemEmail($user['email'], $subject, $html);
+            $log[] = "Sent $days-day warning to User ID {$user['id']}. Email Sent: " . ($sent ? 'Yes' : 'No');
         }
     }
 
