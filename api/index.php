@@ -532,7 +532,8 @@ EOT;
     $parsed_json = json_decode(str_replace(['```json', '```'], '', $ai_text_response), true);
 
     // --- 8. Return parsed JSON ---
-    json_response($parsed_json);
+    // Wrap in 'parses' key as frontend expects { parses: [...] }
+    json_response(['parses' => is_array($parsed_json) ? $parsed_json : []]);
 }
 
 
