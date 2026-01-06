@@ -576,19 +576,56 @@ function handle_update_user_plan()
     if (!$target_uid || !$new_plan_id)
         json_response(['error' => 'Missing UID or Plan ID'], 400);
 
-    // Validate Plan
-    $stmt = $pdo->prepare("SELECT validity_days FROM plans WHERE id = ?");
+    // Validate New Plan
+    $stmt = $pdo->prepare("SELECT id, name, validity_days FROM plans WHERE id = ?");
     $stmt->execute([$new_plan_id]);
-    $plan = $stmt->fetch();
-    if (!$plan)
+    $new_plan = $stmt->fetch();
+    if (!$new_plan)
         json_response(['error' => 'Invalid Plan ID'], 400);
 
-    // Calculate expiry (resetting validity from today)
-    $expiry_date = (new DateTime())->modify('+' . $plan['validity_days'] . ' days')->format('Y-m-d');
+    // Get Free Plan ID
+    $stmt_free = $pdo->prepare("SELECT id FROM plans WHERE name = 'Free' LIMIT 1");
+    $stmt_free->execute();
+    $free_plan_id = $stmt_free->fetchColumn();
 
-    // Update User: Change Plan, Reset Expiry, Reset Usage Quotas
-    $stmt_upd = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, monthly_ai_parsed_count = 0, daily_order_count = 0 WHERE id = ?");
-    $stmt_upd->execute([$new_plan_id, $expiry_date, $target_uid]);
+    // Get Current User Info
+    $stmt_curr = $pdo->prepare("SELECT plan_id, plan_expiry_date FROM users WHERE id = ?");
+    $stmt_curr->execute([$target_uid]);
+    $curr_user = $stmt_curr->fetch();
+
+    $is_paid_to_paid = ($curr_user && $curr_user['plan_id'] != $free_plan_id && $new_plan['id'] != $free_plan_id && !empty($curr_user['plan_expiry_date']));
+
+    $base_date = new DateTime();
+    $old_order_limit = 0;
+    $old_ai_limit = 0;
+
+    if ($is_paid_to_paid) {
+        // Stack Validity
+        $curr_expiry = new DateTime($curr_user['plan_expiry_date']);
+        if ($curr_expiry > $base_date) {
+            $base_date = $curr_expiry;
+        }
+        // Fetch Old Plan Limits for Stacking
+        $stmt_old_plan = $pdo->prepare("SELECT order_limit_monthly, ai_parsing_limit FROM plans WHERE id = ?");
+        $stmt_old_plan->execute([$curr_user['plan_id']]);
+        $old_plan_data = $stmt_old_plan->fetch();
+        if ($old_plan_data) {
+            $old_order_limit = $old_plan_data['order_limit_monthly'] ?? 0;
+            $old_ai_limit = $old_plan_data['ai_parsing_limit'] ?? 0;
+        }
+    }
+
+    $expiry_date = $base_date->modify('+' . $new_plan['validity_days'] . ' days')->format('Y-m-d');
+
+    if ($is_paid_to_paid) {
+        // Paid -> Paid: Stack Limits
+        $stmt_upd = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, extra_order_limit = extra_order_limit + ?, extra_ai_parsed_limit = extra_ai_parsed_limit + ?, last_reset_date = CURDATE() WHERE id = ?");
+        $stmt_upd->execute([$new_plan_id, $expiry_date, $old_order_limit, $old_ai_limit, $target_uid]);
+    } else {
+        // Free -> Paid OR Paid -> Free: Reset Everything (Counters + Extra Limits)
+        $stmt_upd = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, monthly_ai_parsed_count = 0, daily_order_count = 0, extra_order_limit = 0, extra_ai_parsed_limit = 0, last_reset_date = CURDATE() WHERE id = ?");
+        $stmt_upd->execute([$new_plan_id, $expiry_date, $target_uid]);
+    }
 
     // Send Notification Email
     $stmt_email = $pdo->prepare("SELECT email FROM users WHERE id = ?");
