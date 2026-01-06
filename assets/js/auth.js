@@ -113,14 +113,24 @@ if (submitVerificationBtn) {
         const code = document.getElementById('verificationCode').value;
         const msgEl = document.getElementById('verification-message');
 
+        console.log('Verification Clicked', { email, code }); // Debug Log
+
         if (!code || code.length !== 6) {
             showMessage(msgEl, 'Please enter a valid 6-digit code.', 'error');
             return;
         }
 
+        if (!email) {
+            showMessage(msgEl, 'Email not found. Please try logging in again.', 'error');
+            console.error('Email is empty');
+            return;
+        }
+
         submitVerificationBtn.disabled = true;
         try {
+            console.log('Sending API Request...');
             const data = await apiCall('verify_code', { email, code });
+            console.log('API Response:', data);
 
             if (data.loggedIn) {
                 showMessage(msgEl, 'Verification successful! Logging you in...', 'success');
@@ -138,6 +148,7 @@ if (submitVerificationBtn) {
             }
 
         } catch (error) {
+            console.error('API Error:', error);
             showMessage(msgEl, error.message, 'error');
             submitVerificationBtn.disabled = false;
         }
