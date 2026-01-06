@@ -68,6 +68,9 @@ switch ($action) {
     case 'update_user_role':
         handle_update_user_role();
         break;
+    case 'update_user_plan':
+        handle_update_user_plan();
+        break;
     case 'get_settings':
         handle_get_settings();
         break;

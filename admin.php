@@ -915,16 +915,30 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                 $modal.show();
 
                 try {
-                    const details = await apiCall('get_user_details', { uid });
+                    // Fetch Details AND Plans
+                    const [details, plans] = await Promise.all([
+                        apiCall('get_user_details', { uid }),
+                        apiCall('get_plans')
+                    ]);
 
-                    // 1. Prepare the HTML structure (same as before)
+                    // 1. Prepare HTML
                     const planInfo = details.plan || {};
+                    const planOptions = plans.map(p => `<option value="${p.id}" ${p.id == planInfo.plan_id ? 'selected' : ''}>${p.name}</option>`).join('');
+
                     const modalHtml = `
                     <div class="details-modal-section">
                         <h4>Plan Information</h4>
                         <div class="plan-info">
-                            <strong>Plan:</strong> ${planInfo.plan_name || 'N/A'}<br>
-                            <strong>Expires On:</strong> ${planInfo.plan_expiry_date || 'N/A'}
+                            <div style="margin-bottom: 8px;">
+                                <strong>Current Plan:</strong> ${planInfo.plan_name || 'N/A'} <br>
+                                <span style="font-size:11px; color:#666;">Expires: ${planInfo.plan_expiry_date || 'N/A'}</span>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center; background: #f1f1f1; padding: 8px; border-radius: 4px;">
+                                <select id="admin-user-plan-select" style="padding: 5px; flex: 1;">
+                                    ${planOptions}
+                                </select>
+                                <button id="update-user-plan-btn" class="btn-primary btn-sm" data-uid="${uid}">Change Plan</button>
+                            </div>
                         </div>
                     </div>
                     
@@ -1104,6 +1118,27 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                     alert('Failed to update: ' + e.message);
                 } finally {
                     $btn.prop('disabled', false).text('Save Permissions');
+                }
+            });
+
+            // Handle User Plan Update
+            $('#user-details-modal').on('click', '#update-user-plan-btn', async function () {
+                const uid = $(this).data('uid');
+                const plan_id = $('#admin-user-plan-select').val();
+
+                if (!confirm('Are you sure you want to change this user\'s plan? This will reset their validity period and monthly quotas.')) return;
+
+                const $btn = $(this);
+                $btn.prop('disabled', true).text('Updating...');
+                try {
+                    await apiCall('update_user_plan', { uid, plan_id });
+                    alert('Plan updated successfully. Quotas reset to zero. Expiry extended.');
+                    // Close modal to force refresh next time
+                    $('#user-details-modal').hide();
+                } catch (e) {
+                    alert('Failed to update: ' + e.message);
+                } finally {
+                    $btn.prop('disabled', false).text('Change Plan');
                 }
             });
 
