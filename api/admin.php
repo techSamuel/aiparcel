@@ -515,3 +515,29 @@ function sendSubscriptionConfirmationEmail($email, $plan_id, $expiry_date)
 // from: sendSubscriptionConfirmationEmail($user_email, $sub['plan_id']);
 // to:   sendSubscriptionConfirmationEmail($user_email, $sub['plan_id'], $expiry_date);
 
+function handle_update_user_plan()
+{
+    global $pdo, $input;
+    $target_uid = $input['uid'];
+    $new_plan_id = $input['plan_id'];
+
+    if (!$target_uid || !$new_plan_id)
+        json_response(['error' => 'Missing UID or Plan ID'], 400);
+
+    // Validate Plan
+    $stmt = $pdo->prepare("SELECT validity_days FROM plans WHERE id = ?");
+    $stmt->execute([$new_plan_id]);
+    $plan = $stmt->fetch();
+    if (!$plan)
+        json_response(['error' => 'Invalid Plan ID'], 400);
+
+    // Calculate expiry (resetting validity from today)
+    $expiry_date = (new DateTime())->modify('+' . $plan['validity_days'] . ' days')->format('Y-m-d');
+
+    // Update User: Change Plan, Reset Expiry, Reset Usage Quotas
+    $stmt_upd = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, monthly_ai_parsed_count = 0 WHERE id = ?");
+    $stmt_upd->execute([$new_plan_id, $expiry_date, $target_uid]);
+
+    json_response(['success' => true]);
+}
+
