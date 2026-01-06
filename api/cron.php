@@ -165,6 +165,10 @@ try {
         }
     }
 
+    ob_end_clean();
+    echo json_encode(['success' => true, 'log' => $log]);
+
 } catch (Exception $e) {
+    ob_end_clean();
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
