@@ -124,3 +124,14 @@ function normalizePhoneNumber(phone) {
     else if (p.startsWith('88')) p = p.substring(2);
     return p;
 }
+
+// Global Helper: Convert Bengali Numerals to English
+function convertBengaliToEnglishNumerals(str) {
+    if (!str) return str;
+    const bengali = ['०', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+    return str.toString().replace(/[०-৯]/g, (char) => {
+        return english[bengali.indexOf(char)];
+    });
+}

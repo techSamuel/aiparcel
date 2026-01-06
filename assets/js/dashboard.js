@@ -180,10 +180,15 @@ function updateSummary() {
 function createParcelCard(parcelData) {
     // --- Validation Logic ---
     const customerName = parcelData.recipient_name || parcelData.customerName || 'NoNamedCustomer'; // Default Name
-    const phone = parcelData.recipient_phone || parcelData.phone || parcelData.customerPhone || 'N/A';
+    // PROCESSED: Convert Bengali numerals to English for Phone and Amount
+    const phoneRaw = parcelData.recipient_phone || parcelData.phone || parcelData.customerPhone || 'N/A';
+    const phone = convertBengaliToEnglishNumerals(phoneRaw);
+
     const address = parcelData.recipient_address || parcelData.address || parcelData.customerAddress || 'N/A';
     const orderId = parcelData.order_id || parcelData.orderId || 'N/A';
-    const amount = parseFloat(parcelData.cod_amount || parcelData.amount || 0);
+
+    const amountRaw = parcelData.cod_amount || parcelData.amount || 0;
+    const amount = parseFloat(convertBengaliToEnglishNumerals(amountRaw));
     const productName = parcelData.item_description || parcelData.productName || 'N/A';
     const note = parcelData.note || 'N/A';
 
