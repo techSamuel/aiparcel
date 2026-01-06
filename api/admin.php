@@ -362,6 +362,19 @@ function update_subscription_status()
             $base_date = new DateTime(); // Default start from Today
             $is_upgrading_from_paid = ($curr_user && $curr_user['plan_id'] != $free_plan_id && !empty($curr_user['plan_expiry_date']));
 
+            // Fetch Old Plan Limits for Stacking
+            $old_order_limit = 0;
+            $old_ai_limit = 0;
+            if ($is_upgrading_from_paid) {
+                $stmt_old_plan = $pdo->prepare("SELECT order_limit_monthly, ai_parsing_limit FROM plans WHERE id = ?");
+                $stmt_old_plan->execute([$curr_user['plan_id']]);
+                $old_plan_data = $stmt_old_plan->fetch();
+                if ($old_plan_data) {
+                    $old_order_limit = $old_plan_data['order_limit_monthly'] ?? 0;
+                    $old_ai_limit = $old_plan_data['ai_parsing_limit'] ?? 0;
+                }
+            }
+
             if ($is_upgrading_from_paid) {
                 // Paid -> Paid: Stack Validity
                 $curr_expiry = new DateTime($curr_user['plan_expiry_date']);
@@ -373,18 +386,13 @@ function update_subscription_status()
             $expiry_date = $base_date->modify('+' . $plan['validity_days'] . ' days')->format('Y-m-d');
 
             if ($is_upgrading_from_paid) {
-                // Paid -> Paid: Do NOT reset usage (implicitly "adding" access to the limit for longer?)
-                // Or actually adding limit? Without schema change, "Keep Usage" is closest to "Add Limit" vs "Reset Limit".
-                // Let's UPDATE only plan and expiry. Keep counters as is.
-                // Wait, if I don't reset counters, the user has old usage against new limit.
-                // Example: Old Limit 100, Used 90. New Limit 500. Result: Used 90/500. Available 410.
-                // If I "Add Limit", I effectively want 100+500 = 600 limit. Used 90/600. Available 510.
-                // Since I cannot change Limit (it's in Plan), keeping usage is the best approximation without schema change.
-                $stmt_user = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, last_reset_date = CURDATE() WHERE id = ?");
-                $stmt_user->execute([$sub['plan_id'], $expiry_date, $sub['user_id']]);
+                // Paid -> Paid: Stack Validity AND Limits
+                // "Order limit, Ai parsing limit should also be added" -> Add OLD Plan's limit to User's EXTRA limit col.
+                $stmt_user = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, extra_order_limit = extra_order_limit + ?, extra_ai_parsed_limit = extra_ai_parsed_limit + ?, last_reset_date = CURDATE() WHERE id = ?");
+                $stmt_user->execute([$sub['plan_id'], $expiry_date, $old_order_limit, $old_ai_limit, $sub['user_id']]);
             } else {
-                // Free -> Paid: Reset everything
-                $stmt_user = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, monthly_ai_parsed_count = 0, daily_order_count = 0, last_reset_date = CURDATE() WHERE id = ?");
+                // Free -> Paid: Reset everything (including extra limits just in case)
+                $stmt_user = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, monthly_ai_parsed_count = 0, daily_order_count = 0, extra_order_limit = 0, extra_ai_parsed_limit = 0, last_reset_date = CURDATE() WHERE id = ?");
                 $stmt_user->execute([$sub['plan_id'], $expiry_date, $sub['user_id']]);
             }
 

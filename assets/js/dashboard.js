@@ -138,7 +138,7 @@ async function renderPlanStatus() {
         }
         if (status.plan_expiry_date) {
             // Force Asia/Dhaka timezone
-            const expiry = new Date(status.plan_expiry_date + 'T00:00:00+06:00').toLocaleDateString('en-US', { timeZone: 'Asia/Dhaka' });
+            const expiry = new Date(status.plan_expiry_date + 'T00:00:00+06:00').toLocaleDateString('en-GB', { timeZone: 'Asia/Dhaka' });
             planStatusView.innerHTML = `<h3>Current Plan: <strong>${status.plan_name}</strong></h3>${usageHTML}<p>Expires on: <strong>${expiry}</strong></p>`;
         } else {
             planStatusView.innerHTML = `<h3>Current Plan: <strong>${status.plan_name}</strong></h3>${usageHTML}<p>Expires on: <strong>N/A</strong></p>`;
@@ -735,7 +735,7 @@ async function loadHistory(type, container) {
         if (!history || history.length === 0) { $(container).html("No history found."); return; }
         $(container).empty();
         history.forEach(item => {
-            const date = new Date(item.timestamp.replace(' ', 'T') + '+06:00').toLocaleString('en-US', { timeZone: 'Asia/Dhaka' });
+            const date = new Date(item.timestamp.replace(' ', 'T') + '+06:00').toLocaleString('en-GB', { timeZone: 'Asia/Dhaka' });
             let title = '';
             if (type === 'parses') title = `Method: ${item.method} | ${safeParse(item.data).length || 0} items`;
             else title = `Store: ${userCourierStores[item.store_id]?.storeName || 'N/A'}`;

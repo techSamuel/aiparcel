@@ -70,7 +70,9 @@ switch ($action) {
     // --- NEW SUBSCRIPTION ENDPOINTS ---
     case 'get_subscription_data':
         $stmt_user = $pdo->prepare("
-            SELECT u.plan_id, p.name as plan_name, p.order_limit_daily, p.order_limit_monthly, p.ai_parsing_limit,
+            SELECT u.plan_id, p.name as plan_name, p.order_limit_daily, 
+                   (p.order_limit_monthly + IFNULL(u.extra_order_limit, 0)) as order_limit_monthly, 
+                   (p.ai_parsing_limit + IFNULL(u.extra_ai_parsed_limit, 0)) as ai_parsing_limit,
                    u.plan_expiry_date, u.daily_order_count, u.monthly_order_count, u.monthly_ai_parsed_count
             FROM users u
             JOIN plans p ON u.plan_id = p.id
@@ -460,7 +462,9 @@ function parseWithAi($user_id, $input, $pdo)
             u.daily_order_count, 
             u.monthly_order_count,
             u.monthly_ai_parsed_count,
-            u.last_reset_date
+            u.last_reset_date,
+            u.extra_order_limit,
+            u.extra_ai_parsed_limit
         FROM users u 
         JOIN plans p ON u.plan_id = p.id 
         WHERE u.id = ?
@@ -510,15 +514,19 @@ function parseWithAi($user_id, $input, $pdo)
     }
 
     // Check Order Limits (Block parsing if limit reached)
+    // Use Extra Limits if available
+    $effective_monthly_limit = $user_data['order_limit_monthly'] + ($user_data['extra_order_limit'] ?? 0);
+    $effective_ai_limit = $user_data['ai_parsing_limit'] + ($user_data['extra_ai_parsed_limit'] ?? 0);
+
     if ($user_data['order_limit_daily'] > 0 && $user_data['daily_order_count'] >= $user_data['order_limit_daily']) {
         json_response(['error' => 'Daily order limit reached. You cannot parse more parcels today.'], 403);
     }
-    if ($user_data['order_limit_monthly'] > 0 && $user_data['monthly_order_count'] >= $user_data['order_limit_monthly']) {
+    if ($effective_monthly_limit > 0 && $user_data['monthly_order_count'] >= $effective_monthly_limit) {
         json_response(['error' => 'Monthly order limit reached. You cannot parse more parcels this month.'], 403);
     }
     // New AI Limit Check
-    if ($user_data['ai_parsing_limit'] > 0 && $user_data['monthly_ai_parsed_count'] >= $user_data['ai_parsing_limit']) {
-        json_response(['error' => 'Monthly AI parsing limit reached (' . $user_data['ai_parsing_limit'] . '). Upgrade plan.'], 403);
+    if ($effective_ai_limit > 0 && $user_data['monthly_ai_parsed_count'] >= $effective_ai_limit) {
+        json_response(['error' => 'Monthly AI parsing limit reached (' . $effective_ai_limit . '). Upgrade plan.'], 403);
     }
 
     // --- 2. Get Gemini API key (MODIFIED BLOCK) ---
@@ -834,8 +842,10 @@ function create_order($user_id, $input, $pdo)
     }
 
     if ($plan['order_limit_monthly']) {
-        if (($user['monthly_order_count'] + $order_count_in_request) > $plan['order_limit_monthly']) {
-            json_response(['error' => "Your monthly limit is {$plan['order_limit_monthly']} orders. This request exceeds it."], 403);
+        // Effective Limit = Plan Limit + Extra Limit
+        $effective_limit = $plan['order_limit_monthly'] + ($user['extra_order_limit'] ?? 0);
+        if (($user['monthly_order_count'] + $order_count_in_request) > $effective_limit) {
+            json_response(['error' => "Your monthly limit is {$effective_limit} orders. This request exceeds it."], 403);
         }
     }
     // --- END: ORDER LIMIT VALIDATION ---
