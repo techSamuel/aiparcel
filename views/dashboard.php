@@ -4,6 +4,23 @@ if (!defined('APP_URL')) {
     exit('Direct access not allowed');
 }
 ?>
+<style>
+    /* --- Critical Validation Styles --- */
+    .parcel-card.invalid-parcel {
+        border: 2px solid #dc3545 !important;
+        background-color: #fff5f5 !important;
+        box-shadow: 0 0 5px rgba(220, 53, 69, 0.3);
+    }
+
+    .parcel-card.invalid-parcel::before {
+        content: '⚠️ Missing Mandatory Fields';
+        display: block;
+        color: #dc3545;
+        font-weight: bold;
+        font-size: 12px;
+        margin-bottom: 5px;
+    }
+</style>
 <div id="app-view"
     style="display: block; width: 100%; max-width: 900px; margin: 0 auto; padding: 20px; background: var(--white); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
     <header class="app-header">
