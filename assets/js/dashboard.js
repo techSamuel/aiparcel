@@ -192,6 +192,16 @@ function createParcelCard(parcelData) {
     const productName = parcelData.item_description || parcelData.productName || 'N/A';
     const note = parcelData.note || 'N/A';
 
+    // Update parcelData with cleaned values so we can use them later (e.g. for Total COD)
+    parcelData.recipient_name = customerName;
+    parcelData.recipient_phone = phone;
+    parcelData.recipient_address = address;
+    parcelData.cod_amount = amount;
+    parcelData.amount = amount; // IMPORTANT: standardize on 'amount' for calculation
+    parcelData.order_id = orderId;
+    parcelData.item_description = productName;
+    parcelData.note = note;
+
     const card = $(`<div class="parcel-card"></div>`).data('orderData', JSON.stringify(parcelData));
     const phoneForCheck = (phone || '').replace(/\s+/g, '');
     const isPhoneValid = /^01[3-9]\d{8}$/.test(phoneForCheck);
@@ -227,6 +237,7 @@ function createParcelCard(parcelData) {
     `);
     parsedDataContainer.appendChild(card[0]);
     validateAllParcels(); // Update button state
+    updateSummary(); // Update totals
 }
 
 // --- Validation Helper ---
