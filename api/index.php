@@ -482,7 +482,6 @@ function parseWithAi($user_id, $input, $pdo)
     }
 
     // --- 4. Build prompt ---
-    // --- 4. Build prompt ---
     $prompt = <<<EOT
 You are an advanced parcel data parser. The input text contains details for multiple parcels.
 Your task is to identify and extract data for EACH separate parcel.
@@ -508,7 +507,6 @@ Rules:
 1. **Separation**: strict separation between parcels. Do not combine data from two different parcels.
 2. **Language**: Keep the output language consistent with the input (Bangla/English).
 3. **Address Correction**: If an address is partial (e.g., "Mirpur 10"), complete it logically (e.g., "Mirpur 10, Dhaka").
-4. **Output Format**: Return strictly a JSON Array of objects. No markdown, no code blocks, just the raw JSON string.
 
 Examples:
 
@@ -558,7 +556,13 @@ EOT;
 
 
     $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' . $gemini_api_key;
-    $api_body = ['contents' => [['parts' => [['text' => $prompt]]]]];
+    // Optimization: Use native JSON mode for faster and stricter output
+    $api_body = [
+        'contents' => [['parts' => [['text' => $prompt]]]],
+        'generationConfig' => ['responseMimeType' => 'application/json']
+    ];
+
+    // --- 5. Send request to Gemini API ---
 
     // --- 5. Send request to Gemini API ---
     $ch = curl_init($api_url);
