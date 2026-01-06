@@ -53,14 +53,14 @@ if (!defined('APP_URL')) {
                 <option>Please add a store first</option>
             </select>
         </div>
-        <div class="toggle-switch-container">
+        <div class="toggle-switch-container" style="display:none;">
             <label for="smartParseToggle">Enable Smart Auto-Parsing:</label>
             <label class="toggle-switch">
                 <input type="checkbox" id="smartParseToggle" checked>
                 <span class="slider"></span>
             </label>
         </div>
-        <div style="margin-top:15px;">
+        <div id="parsing-input-area" style="margin-top:15px; display:none;">
             <label for="rawText">Paste All Parcel Info Here</label>
             <textarea id="rawText" rows="12" placeholder="Paste single or multiple parcel details here..."></textarea>
             <div class="parsing-buttons">

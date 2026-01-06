@@ -164,6 +164,10 @@ function updateFeatureVisibilityBasedOnPlan() {
 
     // Also hide the Smart Parse Toggle if they can't manual parse/settings
     $('.toggle-switch-container').toggle(canManualParse);
+
+    // Show parsing input area if any main feature is enabled
+    const anyFeatureEnabled = canParseAI || userPermissions.can_autocomplete || canManualParse || userPermissions.can_check_risk;
+    $('#parsing-input-area').toggle(!!anyFeatureEnabled);
 }
 
 function loadUserStores() {
