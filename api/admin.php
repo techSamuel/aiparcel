@@ -264,6 +264,13 @@ function handle_save_plan()
 function handle_delete_plan()
 {
     global $pdo, $input;
+    // Protect 'Free' plan
+    $stmt_check = $pdo->prepare("SELECT name FROM plans WHERE id = ?");
+    $stmt_check->execute([$input['id']]);
+    if ($stmt_check->fetchColumn() === 'Free') {
+        json_response(['error' => 'The Free plan cannot be deleted.'], 403);
+    }
+
     $stmt = $pdo->prepare("DELETE FROM plans WHERE id = ?");
     $stmt->execute([$input['id']]);
     json_response(['success' => true]);
@@ -339,24 +346,47 @@ function update_subscription_status()
             $plan = $stmt_plan->fetch();
 
             // Calculate new expiry date
-            // Logic: If current plan is NOT Free (ID 1), add to existing expiry. Else start from today.
+            // Fetch Free Plan ID dynamically
+            $stmt_free = $pdo->prepare("SELECT id FROM plans WHERE name = 'Free' LIMIT 1");
+            $stmt_free->execute();
+            $free_plan_id = $stmt_free->fetchColumn();
+
+            // Logic: 
+            // If current plan is Free (or null/expired): Replace Quota (Reset Usage) & Validity (Start from Today).
+            // If current plan is Paid: Stack Quota (Keep Usage?? User said "Limit... Added") & Stack Validity.
+
             $stmt_curr = $pdo->prepare("SELECT plan_id, plan_expiry_date FROM users WHERE id = ?");
             $stmt_curr->execute([$sub['user_id']]);
             $curr_user = $stmt_curr->fetch();
 
             $base_date = new DateTime(); // Default start from Today
-            if ($curr_user && $curr_user['plan_id'] != 1 && !empty($curr_user['plan_expiry_date'])) {
+            $is_upgrading_from_paid = ($curr_user && $curr_user['plan_id'] != $free_plan_id && !empty($curr_user['plan_expiry_date']));
+
+            if ($is_upgrading_from_paid) {
+                // Paid -> Paid: Stack Validity
                 $curr_expiry = new DateTime($curr_user['plan_expiry_date']);
                 if ($curr_expiry > $base_date) {
-                    $base_date = $curr_expiry; // Start from current future expiry
+                    $base_date = $curr_expiry;
                 }
             }
 
             $expiry_date = $base_date->modify('+' . $plan['validity_days'] . ' days')->format('Y-m-d');
 
-            // Update user record
-            $stmt_user = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, monthly_ai_parsed_count = 0, daily_order_count = 0, last_reset_date = CURDATE() WHERE id = ?");
-            $stmt_user->execute([$sub['plan_id'], $expiry_date, $sub['user_id']]);
+            if ($is_upgrading_from_paid) {
+                // Paid -> Paid: Do NOT reset usage (implicitly "adding" access to the limit for longer?)
+                // Or actually adding limit? Without schema change, "Keep Usage" is closest to "Add Limit" vs "Reset Limit".
+                // Let's UPDATE only plan and expiry. Keep counters as is.
+                // Wait, if I don't reset counters, the user has old usage against new limit.
+                // Example: Old Limit 100, Used 90. New Limit 500. Result: Used 90/500. Available 410.
+                // If I "Add Limit", I effectively want 100+500 = 600 limit. Used 90/600. Available 510.
+                // Since I cannot change Limit (it's in Plan), keeping usage is the best approximation without schema change.
+                $stmt_user = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, last_reset_date = CURDATE() WHERE id = ?");
+                $stmt_user->execute([$sub['plan_id'], $expiry_date, $sub['user_id']]);
+            } else {
+                // Free -> Paid: Reset everything
+                $stmt_user = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, monthly_ai_parsed_count = 0, daily_order_count = 0, last_reset_date = CURDATE() WHERE id = ?");
+                $stmt_user->execute([$sub['plan_id'], $expiry_date, $sub['user_id']]);
+            }
 
             // Send confirmation email to user
             $stmt_user_email = $pdo->prepare("SELECT email FROM users WHERE id = ?");

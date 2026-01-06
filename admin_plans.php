@@ -68,7 +68,15 @@
                     { data: "ai_parsing_limit", visible: false },
                     { data: "validity_days", visible: false },
                     { data: "description", visible: false },
-                    { title: "Actions", data: "id", orderable: false, render: d => `<button class="edit-plan-btn btn-sm btn-primary" data-id="${d}">Edit</button> <button class="delete-plan-btn btn-sm btn-danger" data-id="${d}">Delete</button>` }
+                    {
+                        title: "Actions", data: "id", orderable: false, render: (d, t, r) => {
+                            let btns = `<button class="edit-plan-btn btn-sm btn-primary" data-id="${d}">Edit</button>`;
+                            if (r.name !== 'Free') {
+                                btns += ` <button class="delete-plan-btn btn-sm btn-danger" data-id="${d}">Delete</button>`;
+                            }
+                            return btns;
+                        }
+                    }
                 ]
             });
         }
