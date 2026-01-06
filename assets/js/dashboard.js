@@ -225,8 +225,15 @@ function createParcelCard(parcelData) {
     parcelData.order_id = orderId;
     parcelData.item_description = productName;
     parcelData.note = note;
+    // Store original note to prevent recursive appending when re-applying templates
+    if (typeof parcelData.original_note === 'undefined') {
+        parcelData.original_note = note;
+    }
 
-    const card = $(`<div class="parcel-card"></div>`).data('orderData', JSON.stringify(parcelData));
+    const card = $(`<div class="parcel-card"></div>`);
+    // IMPORTANT: Use .attr() so it's accessible via .attr() later (and visible in DOM inspector)
+    card.attr('data-order-data', JSON.stringify(parcelData));
+    card.data('orderData', JSON.stringify(parcelData)); // Keep cache in sync
     const phoneForCheck = (phone || '').replace(/\s+/g, '');
     const isPhoneValid = /^01[3-9]\d{8}$/.test(phoneForCheck);
 
@@ -1113,22 +1120,26 @@ function applyCustomNoteToAll(silent = false) {
 
         // Re-construct note
         let note = template;
+
+        // Use original_note if available, otherwise fallback to current note (first run)
+        // This prevents recursive appending (e.g. "Gift Gift Gift")
+        const baseNote = (typeof data.original_note !== 'undefined') ? data.original_note : (data.note || '');
+
         note = note.replace(/{order_id}/g, data.order_id || data.orderId || '');
         note = note.replace(/{name}/g, data.recipient_name || data.customerName || '');
         note = note.replace(/{phone}/g, data.recipient_phone || data.phone || '');
         note = note.replace(/{address}/g, data.recipient_address || data.address || '');
         note = note.replace(/{product}/g, data.item_description || data.productName || '');
-
-        // Special case for {note}: If the template contains {note}, we replace it with the ORIGINAL data.note
-        // BUT, if we have already updated data.note, using {note} recursively might duplicate things like "Gift - Gift - ".
-        // To solve this properly, ideally we should store 'original_note' in data-order-data separately.
-        // For now, let's assume {note} uses the CURRENT note value. Valid use case: appending.
-        note = note.replace(/{note}/g, data.note || '');
+        note = note.replace(/{note}/g, baseNote);
 
         note = note.trim();
 
         // Update Data Object
         data.note = note;
+        // Ensure original_note is preserved/set
+        if (typeof data.original_note === 'undefined') {
+            data.original_note = baseNote;
+        }
 
         // Update DOM attribute
         $card.attr('data-order-data', JSON.stringify(data));
