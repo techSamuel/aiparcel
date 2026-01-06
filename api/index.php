@@ -1942,8 +1942,8 @@ function correct_single_address_with_ai($user_id, $input, $pdo)
     if ($http_code >= 400) {
         $error_details = json_decode($response_body, true);
         $error_msg = $error_details['error']['message'] ?? 'Unknown API error';
-        // Debug: log key length and response for troubleshooting
-        error_log("Gemini API error - Key length: " . strlen($gemini_api_key) . ", HTTP: $http_code, Response: " . substr($response_body, 0, 500));
+        // Debug: log key prefix, length and response for troubleshooting
+        error_log("Gemini API error - Key starts with: " . substr($gemini_api_key, 0, 10) . "..., Length: " . strlen($gemini_api_key) . ", HTTP: $http_code");
         json_response(['error' => 'The AI API returned an error: ' . $error_msg], $http_code);
     }
 
