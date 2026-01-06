@@ -1,5 +1,6 @@
 <?php
 // api/cron.php - Daily Maintenance Script
+ob_start(); // Buffer output to prevent JSON corruption from PHPMailer warnings
 // Run this script once every 24 hours via Cron Job or similar scheduler
 // Example Cron: 0 0 * * * php /path/to/api/cron.php
 
