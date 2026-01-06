@@ -1008,7 +1008,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                         pageLength: 5,
                         lengthChange: false,
                         searching: false,
-                        order: [[0, 'desc']]
+                        order: [[0, 'asc']]
                     });
 
                     // Initialize Orders Table (MODIFIED)
@@ -1049,7 +1049,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                         pageLength: 5,
                         lengthChange: false,
                         searching: false,
-                        order: [[0, 'desc']]
+                        order: [[0, 'asc']]
                     });
 
                 } catch (error) {
@@ -1205,6 +1205,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                     destroy: true,
                     ajax: (d, cb) => apiCall('list_users').then(res => cb({ data: res })),
                     columns: [
+                        { title: "Joined", data: "created_at", render: d => new Date(d).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
                         { title: "Email", data: "email" }, { title: "Plan", data: "plan_name" },
                         { title: "Verified", data: "is_verified", render: d => d ? '✅' : '❌' },
                         { title: "Actions", data: "id", orderable: false, render: d => `<button class="btn-view-details btn-sm" data-uid="${d}">Details</button>` }
@@ -1444,7 +1445,7 @@ $is_logged_in_as_admin = (isset($_SESSION['user_id']) && isset($_SESSION['is_adm
                     await fetch('api/admin.php', { method: 'POST', body: formData });
                     alert('Settings saved!');
                     loadSettings();
-                } catch (e) {
+     } catch (e) {
                     alert('Error saving settings: ' + e.message);
                 }
             });

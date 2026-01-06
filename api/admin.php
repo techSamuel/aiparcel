@@ -158,10 +158,10 @@ function handle_list_users()
     global $pdo;
     try {
         $stmt = $pdo->query("
-            SELECT u.id, u.email, u.display_name, u.is_verified, p.name as plan_name 
+            SELECT u.id, u.email, u.display_name, u.is_verified, u.created_at, p.name as plan_name 
             FROM users u
             LEFT JOIN plans p ON u.plan_id = p.id
-            ORDER BY u.id DESC
+            ORDER BY u.created_at ASC
         ");
         json_response($stmt->fetchAll(PDO::FETCH_ASSOC));
     } catch (PDOException $e) {
@@ -180,7 +180,7 @@ function handle_get_global_history()
         SELECT t.*, u.email as userEmail 
         FROM $type t 
         JOIN users u ON t.user_id = u.id 
-        ORDER BY t.timestamp DESC LIMIT 50
+        ORDER BY t.timestamp ASC LIMIT 50
     ");
     $stmt->execute();
     json_response($stmt->fetchAll());
@@ -307,7 +307,7 @@ function handle_get_subscription_orders()
         JOIN users u ON s.user_id = u.id
         JOIN plans p ON s.plan_id = p.id
         JOIN payment_methods pm ON s.payment_method_id = pm.id
-        ORDER BY s.created_at DESC
+        ORDER BY s.created_at ASC
     ");
     json_response($stmt->fetchAll());
 }
