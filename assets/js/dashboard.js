@@ -722,6 +722,7 @@ parseWithAIBtn.addEventListener('click', async () => {
     parsedDataContainer.innerHTML = '';
     try {
         const results = await apiCall('parse_with_ai', { rawText });
+        console.log("AI Parse Results:", results); // Debugging
         if (results && results.parses && results.parses.length > 0) {
             results.parses.forEach(p => createParcelCard(p)); // AI returns updated keys, createParcelCard handles them
             updateSummary();
