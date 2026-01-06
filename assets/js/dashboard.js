@@ -336,14 +336,18 @@ function identifyAndParseOrder(orderText) {
     let lines = orderText.split('\n').map(line => {
         let converted = '';
         for (const char of line.trim()) {
-            if (char >= '০' && char <= '৯') {
-                converted += String.fromCharCode(char.charCodeAt(0) - '০'.charCodeAt(0) + '0'.charCodeAt(0));
+            // Bengali digits: ০ (U+09E6) to ৯ (U+09EF)
+            const code = char.charCodeAt(0);
+            if (code >= 0x09E6 && code <= 0x09EF) {
+                converted += (code - 0x09E6).toString();
             } else {
                 converted += char;
             }
         }
         return converted;
     }).filter(line => line.length > 0);
+
+    console.log('Pre-converted lines:', lines); // DEBUG
 
     if (lines.length === 0) return parsedData;
 
@@ -355,6 +359,7 @@ function identifyAndParseOrder(orderText) {
         if (assignedLines.has(i)) continue;
         // Remove spaces, dashes, etc.
         const normalized = lines[i].replace(/[\s\-\(\)\.]/g, '');
+        console.log('Phone check - normalized:', normalized); // DEBUG
 
         // Valid BD phone patterns:
         // - 01XXXXXXXXX (11 digits)
@@ -369,6 +374,7 @@ function identifyAndParseOrder(orderText) {
         }
 
         if (phoneDigits) {
+            console.log('Phone detected:', phoneDigits); // DEBUG
             parsedData.customerPhone = phoneDigits;
             assignedLines.add(i);
             break;
