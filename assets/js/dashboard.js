@@ -734,11 +734,26 @@ async function loadHistory(type, container) {
     } catch (e) { $(container).html(`<p class="error">Could not load history.</p>`); }
 }
 $('#history-modal').on('click', '.details-btn', function () {
-    const item = JSON.parse($(this).attr('data-item'));
-    const content = $(this).data('type') === 'parses' ? JSON.parse(item.data) : { Request: JSON.parse(item.request_payload), Response: JSON.parse(item.api_response) };
-    $('#details-title').text('Details');
-    $('#details-content').text(JSON.stringify(content, null, 2));
-    $('#details-modal').show();
+    try {
+        const item = JSON.parse($(this).attr('data-item'));
+        let content;
+        const safeParse = (str) => { try { return JSON.parse(str); } catch (e) { return str; } };
+
+        if ($(this).data('type') === 'parses') {
+            content = safeParse(item.data);
+        } else {
+            content = {
+                Request: safeParse(item.request_payload),
+                Response: safeParse(item.api_response)
+            };
+        }
+        $('#details-title').text('Details');
+        $('#details-content').text(JSON.stringify(content, null, 2));
+        $('#details-modal').show();
+    } catch (e) {
+        console.error("Details Error:", e);
+        alert("Could not load details.");
+    }
 });
 
 // Check Risks and Remove Card

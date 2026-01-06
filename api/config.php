@@ -1,4 +1,7 @@
 <?php
+// Set Timezone to GMT+6 (Asia/Dhaka)
+date_default_timezone_set('Asia/Dhaka');
+
 // Database Configuration
 define('DB_HOST', 'localhost');
 define('DB_USER', 'u374415227_aiparcel');

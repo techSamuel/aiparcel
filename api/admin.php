@@ -161,6 +161,7 @@ function handle_list_users()
             SELECT u.id, u.email, u.display_name, u.is_verified, p.name as plan_name 
             FROM users u
             LEFT JOIN plans p ON u.plan_id = p.id
+            ORDER BY u.id DESC
         ");
         json_response($stmt->fetchAll(PDO::FETCH_ASSOC));
     } catch (PDOException $e) {
@@ -535,8 +536,17 @@ function handle_update_user_plan()
     $expiry_date = (new DateTime())->modify('+' . $plan['validity_days'] . ' days')->format('Y-m-d');
 
     // Update User: Change Plan, Reset Expiry, Reset Usage Quotas
-    $stmt_upd = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, monthly_ai_parsed_count = 0 WHERE id = ?");
+    $stmt_upd = $pdo->prepare("UPDATE users SET plan_id = ?, plan_expiry_date = ?, monthly_order_count = 0, monthly_ai_parsed_count = 0, daily_order_count = 0 WHERE id = ?");
     $stmt_upd->execute([$new_plan_id, $expiry_date, $target_uid]);
+
+    // Send Notification Email
+    $stmt_email = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+    $stmt_email->execute([$target_uid]);
+    $user_email = $stmt_email->fetchColumn();
+
+    if ($user_email) {
+        sendSubscriptionConfirmationEmail($user_email, $new_plan_id, $expiry_date);
+    }
 
     json_response(['success' => true]);
 }
