@@ -2998,7 +2998,7 @@ try {
             });
             setupDragAndDrop();
             updateRawTextPlaceholder();
-            document.getElementById('autoParseToggle').addEventListener('change', () => {
+            document.getElementById('smartParseToggle').addEventListener('change', () => {
                 updateRawTextPlaceholder();
             });
         }
@@ -3010,7 +3010,7 @@ try {
             if (!rawTextInput) return; // Make sure the element exists
 
             // --- NEW: Check the state of the auto-parse toggle ---
-            const useAutoParsing = document.getElementById('autoParseToggle').checked;
+            const useAutoParsing = document.getElementById('smartParseToggle').checked;
             let placeholderText = "";
 
             if (useAutoParsing) {
