@@ -338,13 +338,26 @@ function identifyAndParseOrder(orderText) {
     const assignedLines = new Set();
 
     // --- PASS 1: Extract Phone Number (Highest Priority) ---
-    // Normalize Bengali digits FIRST, then check for BD phone pattern.
+    // BD phone formats: 
+    //   - 11 digits: 01XXXXXXXXX (starts with 01, operator 3-9, then 8 digits)
+    //   - 13 digits: 8801XXXXXXXXX (with 880 prefix, no leading 0 after)
+    //   - 14 chars: +8801XXXXXXXXX (with +880 prefix)
+    // Supports Bengali numerals (০-৯) and Bengali plus sign
     for (let i = 0; i < lines.length; i++) {
         if (assignedLines.has(i)) continue;
-        const normalizedLine = convertBengaliToEnglish(lines[i]).replace(/[\s\-]/g, '');
-        // BD phone: optionally starts with +880 or 880, then 01X followed by 8 digits (total 11 digits)
-        if (/^(\+?880)?0?1[3-9]\d{8}$/.test(normalizedLine)) {
-            parsedData.customerPhone = normalizePhoneNumber(normalizedLine);
+        // Normalize: Convert Bengali digits to English, remove spaces/dashes
+        let normalizedLine = convertBengaliToEnglish(lines[i]).replace(/[\s\-]/g, '');
+        // Also handle Bengali plus sign (if any unusual encoding)
+        normalizedLine = normalizedLine.replace(/^\+/, '+');
+
+        // Check for valid BD phone patterns:
+        // Pattern 1: 01XXXXXXXXX (11 digits, no prefix)
+        // Pattern 2: 8801XXXXXXXXX (13 digits, 880 prefix)
+        // Pattern 3: +8801XXXXXXXXX (14 chars, +880 prefix)
+        const phoneMatch = normalizedLine.match(/^(\+?880)?0?(1[3-9]\d{8})$/);
+        if (phoneMatch && phoneMatch[2]) {
+            // Extract the core 10 digits (1XXXXXXXXX) and prepend 0 to make it 01XXXXXXXXX
+            parsedData.customerPhone = '0' + phoneMatch[2];
             assignedLines.add(i);
             break; // Only one phone per order
         }
