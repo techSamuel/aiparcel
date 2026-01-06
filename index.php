@@ -13,15 +13,14 @@ $appName = "AiParcel";
 $appLogoUrl = "https://i.ibb.co/6803876/Ai-Parcel-Logo-Full.png";
 
 try {
-    $stmt = $pdo->prepare("SELECT app_name, app_logo_url FROM settings LIMIT 1");
+    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('app_name', 'app_logo_url')");
     $stmt->execute();
-    $settings = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($settings) {
-        if (!empty($settings['app_name'])) {
-            $appName = $settings['app_name'];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        if ($row['setting_key'] === 'app_name' && !empty($row['setting_value'])) {
+            $appName = $row['setting_value'];
         }
-        if (!empty($settings['app_logo_url'])) {
-            $appLogoUrl = $settings['app_logo_url'];
+        if ($row['setting_key'] === 'app_logo_url' && !empty($row['setting_value'])) {
+            $appLogoUrl = $row['setting_value'];
         }
     }
 } catch (Exception $e) {
@@ -94,6 +93,4 @@ if ($isLoggedIn && ($page === 'auth' || $page === 'landing' || $page === '')) {
     }
     ?>
 
-</body>
-
-</html>
+</body></html>
