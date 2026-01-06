@@ -1278,8 +1278,26 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
     }
     usort($results, fn($a, $b) => $a['latency'] <=> $b['latency']);
 
-    // Try each server in order until one succeeds
+    // Helper function to check if result looks suspicious (all 0% success)
+    function isSuspiciousResult($data)
+    {
+        if (!is_array($data) || empty($data))
+            return true;
+        foreach ($data as $courier) {
+            // If any courier has delivered > 0, it's not suspicious
+            $delivered = is_numeric($courier['delivered']) ? (int) $courier['delivered'] : 0;
+            if ($delivered > 0)
+                return false;
+        }
+        // All couriers have 0 delivered - this is suspicious
+        return true;
+    }
+
+    // Try each server in order until one succeeds with trustworthy data
     $lastError = 'All fraud check servers failed.';
+    $suspiciousData = null;
+    $suspiciousServer = null;
+
     foreach ($results as $result) {
         $server = $result['server'];
         $functionName = $server['function'];
@@ -1290,7 +1308,18 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
             try {
                 $data = $functionName($phone);
                 if ($data && is_array($data) && !isset($data['error'])) {
-                    // Success! Return the data
+                    // Check if result looks suspicious (0% success on all)
+                    if (isSuspiciousResult($data)) {
+                        error_log("Server {$server['url']} returned suspicious data (0% success). Verifying with next server...");
+                        // Save this result in case all servers return the same
+                        if ($suspiciousData === null) {
+                            $suspiciousData = $data;
+                            $suspiciousServer = $server['url'];
+                        }
+                        continue; // Try next server to verify
+                    }
+
+                    // Success with trustworthy data!
                     json_response($data);
                     return;
                 } else {
@@ -1304,6 +1333,14 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
         } else {
             error_log("Function {$functionName} not found");
         }
+    }
+
+    // If we have suspicious data but no trustworthy data, return the suspicious data
+    // (it might be accurate - customer really has 0% success)
+    if ($suspiciousData !== null) {
+        error_log("Returning suspicious data from {$suspiciousServer} - all servers returned similar results");
+        json_response($suspiciousData);
+        return;
     }
 
     // All servers failed
