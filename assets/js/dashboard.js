@@ -1057,8 +1057,21 @@ openUpgradeModalBtn.addEventListener('click', async () => {
         $plansContainer.empty();
         if (availablePlans.length === 0) { $plansContainer.html('<p>No plans available.</p>'); return; }
         availablePlans.forEach(plan => {
-            const aiInfo = plan.ai_parsing_limit > 0 ? `<br><small style="color:#2c3e50; font-weight:600;">AI Parsing: ${plan.ai_parsing_limit} / month</small>` : '';
-            $plansContainer.append(`<div class="plan-option" data-plan-id="${plan.id}"><h4>${plan.name} - ${plan.price} BDT</h4><p>${plan.description}${aiInfo}</p></div>`);
+            const details = [];
+            if (plan.validity_days > 0) details.push(`Validity: ${plan.validity_days} Days`);
+            if (plan.order_limit_monthly > 0) details.push(`Orders: ${plan.order_limit_monthly}/mo`);
+            if (plan.ai_parsing_limit > 0) details.push(`AI Parsing: ${plan.ai_parsing_limit}/mo`);
+
+            const detailHtml = details.length > 0 ? `<div style="font-size: 0.85em; color: #555; margin-top: 5px; background: #eef; padding: 4px; border-radius: 4px;">${details.join(' &bull; ')}</div>` : '';
+
+            $plansContainer.append(`<div class="plan-option" data-plan-id="${plan.id}">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin:0;">${plan.name}</h4>
+                    <span style="font-weight:bold; color:var(--primary-color);">${plan.price} BDT</span>
+                </div>
+                <p style="margin: 5px 0; font-size: 0.9em;">${plan.description}</p>
+                ${detailHtml}
+            </div>`);
         });
     } catch (e) { $plansContainer.html(`<p class="error">Could not load plans.</p>`); }
 });
