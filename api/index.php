@@ -1871,11 +1871,6 @@ function tryFraudCheckStorex($phone)
         return ['error' => "Storex server returned HTTP $code"];
     }
 
-    // Detect HTML error pages (server errors return full HTML pages)
-    if (strpos($html, '<html') !== false && (strpos($html, 'Error') !== false || strpos($html, '500') !== false || strpos($html, '503') !== false)) {
-        return ['error' => 'Storex server returned an error page'];
-    }
-
     $dom = new DOMDocument();
     @$dom->loadHTML($html);
     $xpath = new DOMXPath($dom);
@@ -1915,11 +1910,6 @@ function tryFraudCheckLink($phone)
 
     if ($code != 200 || !$html) {
         return ['error' => "FraudChecker.link returned HTTP $code"];
-    }
-
-    // Detect HTML error pages
-    if (strpos($html, '<html') !== false && (strpos($html, 'Error') !== false || strpos($html, '500') !== false || strpos($html, '503') !== false || strpos($html, 'Unavailable') !== false)) {
-        return ['error' => 'FraudChecker.link returned an error page'];
     }
 
     $dom = new DOMDocument();
@@ -1975,11 +1965,6 @@ function tryFraudCheckOnecodesoft($phone)
 
     if ($code != 200 || !$html) {
         return ['error' => "Onecodesoft returned HTTP $code"];
-    }
-
-    // Detect HTML error pages
-    if (strpos($html, '<html') !== false && (strpos($html, 'Error') !== false || strpos($html, '500') !== false || strpos($html, '503') !== false || strpos($html, 'Unavailable') !== false)) {
-        return ['error' => 'Onecodesoft returned an error page'];
     }
 
     $dom = new DOMDocument();
