@@ -1853,7 +1853,12 @@ function tryFraudCheckStorex($phone)
     @unlink($cookieFile);
 
     if ($code != 200 || !$html) {
-        return ['error' => 'Storex server returned empty response'];
+        return ['error' => "Storex server returned HTTP $code"];
+    }
+
+    // Detect HTML error pages (server errors return full HTML pages)
+    if (strpos($html, '<html') !== false && (strpos($html, 'Error') !== false || strpos($html, '500') !== false || strpos($html, '503') !== false)) {
+        return ['error' => 'Storex server returned an error page'];
     }
 
     $dom = new DOMDocument();
@@ -1890,10 +1895,16 @@ function tryFraudCheckLink($phone)
     curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     $html = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if (!$html) {
-        return ['error' => 'FraudChecker.link returned empty response'];
+    if ($code != 200 || !$html) {
+        return ['error' => "FraudChecker.link returned HTTP $code"];
+    }
+
+    // Detect HTML error pages
+    if (strpos($html, '<html') !== false && (strpos($html, 'Error') !== false || strpos($html, '500') !== false || strpos($html, '503') !== false || strpos($html, 'Unavailable') !== false)) {
+        return ['error' => 'FraudChecker.link returned an error page'];
     }
 
     $dom = new DOMDocument();
@@ -1944,10 +1955,16 @@ function tryFraudCheckOnecodesoft($phone)
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $html = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if (!$html) {
-        return ['error' => 'Onecodesoft returned empty response'];
+    if ($code != 200 || !$html) {
+        return ['error' => "Onecodesoft returned HTTP $code"];
+    }
+
+    // Detect HTML error pages
+    if (strpos($html, '<html') !== false && (strpos($html, 'Error') !== false || strpos($html, '500') !== false || strpos($html, '503') !== false || strpos($html, 'Unavailable') !== false)) {
+        return ['error' => 'Onecodesoft returned an error page'];
     }
 
     $dom = new DOMDocument();
