@@ -637,7 +637,7 @@ logoutBtn.addEventListener('click', async () => {
 
 // Modals
 function injectModalContent() {
-    $('#store-modal').html(`<div class="modal-content"><div class="modal-header"><h2>Store Management</h2><span class="close-btn">&times;</span></div><div class="store-management"><div class="add-store-container form-group"><h3>Add / Edit Store</h3><input type="hidden" id="editingStoreId"><select id="courierTypeSelector"><option value="steadfast">Steadfast</option><option value="pathao">Pathao</option></select><input type="text" id="storeName" placeholder="Store Name"><div id="steadfast-fields"><input type="password" id="newApiKey" placeholder="Steadfast API Key"><input type="password" id="newSecretKey" placeholder="Steadfast Secret Key"></div><div id="pathao-fields" style="display:none; flex-direction:column; gap:10px;"><input type="text" id="pathaoClientId" placeholder="Pathao Client ID"><input type="text" id="pathaoClientSecret" placeholder="Pathao Client Secret"><input type="text" id="pathaoUsername" placeholder="Pathao Username (Email)"><input type="password" id="pathaoPassword" placeholder="Pathao Password"><input type="number" id="pathaoStoreId" placeholder="Pathao Store ID"></div><button id="addStoreBtn" style="margin-top:10px;">Add Store</button></div><div class="store-list-container"><h3>Your Saved Stores</h3><ul id="storeList"></ul></div></div><div id="store-message" class="message" style="display:none;"></div></div>`);
+    $('#store-modal').html(`<div class="modal-content"><div class="modal-header"><h2>Store Management</h2><span class="close-btn">&times;</span></div><div class="store-management"><div class="add-store-container form-group"><h3>Add / Edit Store</h3><input type="hidden" id="editingStoreId"><select id="courierTypeSelector"><option value="steadfast">Steadfast</option><option value="pathao">Pathao</option><option value="redx">Redx</option></select><input type="text" id="storeName" placeholder="Store Name"><div id="steadfast-fields"><input type="password" id="newApiKey" placeholder="Steadfast API Key"><input type="password" id="newSecretKey" placeholder="Steadfast Secret Key"></div><div id="pathao-fields" style="display:none; flex-direction:column; gap:10px;"><input type="text" id="pathaoClientId" placeholder="Pathao Client ID"><input type="text" id="pathaoClientSecret" placeholder="Pathao Client Secret"><input type="text" id="pathaoUsername" placeholder="Pathao Username (Email)"><input type="password" id="pathaoPassword" placeholder="Pathao Password"><input type="number" id="pathaoStoreId" placeholder="Pathao Store ID"></div><div id="redx-fields" style="display:none;"><input type="text" id="redxToken" placeholder="Redx Token"></div><button id="addStoreBtn" style="margin-top:10px;">Add Store</button></div><div class="store-list-container"><h3>Your Saved Stores</h3><ul id="storeList"></ul></div></div><div id="store-message" class="message" style="display:none;"></div></div>`);
     $('#settings-modal').html(`<div class="modal-content"><div class="modal-header"><h2>Local Parser Settings</h2><span class="close-btn">&times;</span></div><div id="parserSettings"><h4>Active Fields (Drag to reorder)</h4><ul id="parserFields"></ul><div id="availableFieldsWrapper"><h4>Available Fields</h4><div class="available-fields-container" id="availableFields"></div></div><div class="instructions-bn" style="margin-top:20px; font-size: 14px; line-height: 1.6;"><h4>How to use Parser Settings</h4><ul><li>Arrange the fields above by dragging them into the same order as your pasted text lines.</li><li>Check 'Required' if a line must exist for the parcel to be valid.</li><li>When pasting multiple parcels, separate each one with a blank line.</li></ul></div></div></div>`);
     // History modal structure is already in HTML, just needs dynamic content logic
     // Profile modal structure is in JS in Monolith, let's keep it here
@@ -658,21 +658,33 @@ openProfileModalBtn.addEventListener('click', () => {
 });
 
 // Store Actions
+// Store Actions
 $('#store-modal').on('click', '#addStoreBtn', async function () {
+    const courierType = $('#courierTypeSelector').val();
+    let credentials = {};
+
+    if (courierType === 'pathao') {
+        credentials = {
+            clientId: $('#pathaoClientId').val(), clientSecret: $('#pathaoClientSecret').val(),
+            username: $('#pathaoUsername').val(), password: $('#pathaoPassword').val(), storeId: $('#pathaoStoreId').val()
+        };
+    } else if (courierType === 'redx') {
+        credentials = { token: $('#redxToken').val() };
+    } else {
+        credentials = { apiKey: $('#newApiKey').val(), secretKey: $('#newSecretKey').val() };
+    }
+
     const payload = {
         editingId: $('#editingStoreId').val() || null,
         storeName: $('#storeName').val(),
-        courierType: $('#courierTypeSelector').val(),
-        credentials: $('#courierTypeSelector').val() === 'pathao' ? {
-            clientId: $('#pathaoClientId').val(), clientSecret: $('#pathaoClientSecret').val(),
-            username: $('#pathaoUsername').val(), password: $('#pathaoPassword').val(), storeId: $('#pathaoStoreId').val()
-        } : { apiKey: $('#newApiKey').val(), secretKey: $('#newSecretKey').val() }
+        courierType: courierType,
+        credentials: credentials
     };
     try {
         await apiCall('add_or_update_store', payload);
         const data = await apiCall('load_user_data');
         userCourierStores = data.stores; loadUserStores();
-        $('#storeName, #newApiKey, #newSecretKey, #pathaoClientId, #pathaoClientSecret, #pathaoUsername, #pathaoPassword, #pathaoStoreId').val('');
+        $('#storeName, #newApiKey, #newSecretKey, #pathaoClientId, #pathaoClientSecret, #pathaoUsername, #pathaoPassword, #pathaoStoreId, #redxToken').val('');
         $('#editingStoreId').val(''); $(this).text('Add Store');
         showMessage(document.getElementById('store-message'), 'Store saved.', 'success');
     } catch (e) { showMessage(document.getElementById('store-message'), e.message, 'error'); }
@@ -684,6 +696,8 @@ $('#store-modal').on('click', '#addStoreBtn', async function () {
     if (store.courierType === 'pathao') {
         $('#pathaoClientId').val(store.clientId); $('#pathaoClientSecret').val(store.clientSecret);
         $('#pathaoUsername').val(store.username); $('#pathaoPassword').val(store.password); $('#pathaoStoreId').val(store.storeId);
+    } else if (store.courierType === 'redx') {
+        $('#redxToken').val(store.token);
     } else {
         $('#newApiKey').val(store.apiKey); $('#newSecretKey').val(store.secretKey);
     }
@@ -695,8 +709,10 @@ $('#store-modal').on('click', '#addStoreBtn', async function () {
         userCourierStores = data.stores; loadUserStores();
     }
 }).on('change', '#courierTypeSelector', function () {
-    $('#pathao-fields').toggle($(this).val() === 'pathao');
-    $('#steadfast-fields').toggle($(this).val() !== 'pathao');
+    const type = $(this).val();
+    $('#pathao-fields').toggle(type === 'pathao');
+    $('#redx-fields').toggle(type === 'redx');
+    $('#steadfast-fields').toggle(type === 'steadfast');
 });
 
 // Profile Actions
