@@ -1239,6 +1239,18 @@ $('#submit-payment-btn').on('click', async function () {
     $button.prop('disabled', true); $loader.show();
     try {
         const result = await apiCall('submit_purchase_request', { planId: selectedPlanId, methodId: selectedMethodId, senderNumber, transactionId });
+
+        // Pixel Tracking
+        try {
+            if (typeof fbq !== 'undefined' && selectedPlan) {
+                fbq('track', 'Subscribe', {
+                    value: selectedPlan.price,
+                    currency: 'BDT',
+                    predicted_ltv: selectedPlan.price
+                });
+            }
+        } catch (e) { console.error('Pixel Error:', e); }
+
         showMessage(document.getElementById('upgrade-message'), result.message, 'success', 8000);
         setTimeout(() => $('#upgrade-modal').hide(), 4000);
     } catch (e) { showMessage(document.getElementById('upgrade-message'), e.message, 'error'); }

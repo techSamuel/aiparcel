@@ -25,6 +25,9 @@ define('SMTP_FROM_NAME', 'AiParcel');      // The "From" name
 
 define('ADMIN_NOTIFICATION_EMAIL', 'rodalsoft@gmail.com'); // Email for purchase notifications
 
+// Facebook Pixel Configuration
+define('FACEBOOK_PIXEL_ID', 'YOUR_PIXEL_ID_HERE'); // Replace with your actual Pixel ID
+
 // Google OAuth Configuration
 // Client ID and Secret are now managed via the Admin Panel -> Settings
 define('GOOGLE_REDIRECT_URI', APP_URL . '/api/google-auth.php');
