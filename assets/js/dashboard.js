@@ -187,8 +187,10 @@ function loadUserStores() {
     }
 
     // Set selected value if it exists in the list
-    if (currentUser.lastSelectedStoreId && userCourierStores[currentUser.lastSelectedStoreId]) {
-        storeSelector.value = currentUser.lastSelectedStoreId;
+    // Set selected value if it exists in the list
+    const savedStoreId = currentUser.lastSelectedStoreId || currentUser.last_selected_store_id;
+    if (savedStoreId && userCourierStores[savedStoreId]) {
+        storeSelector.value = savedStoreId;
     } else {
         // Default to first available
         storeSelector.value = Object.keys(userCourierStores)[0];
