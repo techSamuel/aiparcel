@@ -1704,6 +1704,10 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
             'url' => 'https://onecodesoft.com/fraudchecker',
             'function' => 'tryFraudCheckOnecodesoft'
         ],
+        [
+            'url' => 'https://www.bdcommerce.app/tools/delivery-fraud-check/',
+            'function' => 'tryFraudCheckBDCommerce'
+        ],
     ];
 
     // Helper: test server latency
@@ -2024,7 +2028,97 @@ function tryFraudCheckOnecodesoft($phone)
         }
     }
 
-    return empty($courier_data) ? ['error' => 'No data found on Onecodesoft'] : $courier_data;
+
+function tryFraudCheckBDCommerce($phone)
+{
+    // Ensure phone has +88 prefix
+    if (strpos($phone, '+88') !== 0) {
+        $phone = '+88' . preg_replace('/^\+88/', '', $phone);
+    }
+
+    $url = 'https://www.bdcommerce.app/tools/delivery-fraud-check/' . urlencode($phone);
+    
+    // Output buffering handled by orchestrator, but good practice to be clean
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0');
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $html = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($code != 200 || !$html) {
+        return ['error' => "BDCommerce returned HTTP $code"];
+    }
+
+    $dom = new DOMDocument();
+    @$dom->loadHTML($html);
+    $xpath = new DOMXPath($dom);
+
+    // Look for rows that look like courier data
+    // Based on limited view, likely divs with flex/grid or table rows
+    // Let's look for known courier names and traverse relative to them
+    $courier_data = [];
+    $couriers = ['RedX', 'Pathao', 'Steadfast', 'Paperfly', 'eCourier'];
+    
+    foreach ($couriers as $courierName) {
+        // Find element containing courier name (case insensitive)
+        $node = $xpath->query("//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '" . strtolower($courierName) . "')]")->item(0);
+        
+        if ($node) {
+            // Check if it's inside a row-like structure
+            // Usually data is in siblings or parent's siblings
+            // Let's assume a row structure: Courier | Total | Delivered | Returned | ...
+            
+            // Navigate up to a container row if possible, or look for following siblings with numbers
+            $parent = $node->parentNode;
+            while ($parent && $parent->nodeName !== 'tr' && $parent->nodeName !== 'div' && $parent->nodeName !== 'body') {
+                 // Try to find a parent that has multiple children (columns)
+                 if ($parent->childNodes->length > 3) {
+                     break;
+                 }
+                 $parent = $parent->parentNode;
+            }
+            
+            if ($parent) {
+                // Extract numbers from this row/container
+                // We'll look for all numbers in the text content of the row
+                $text = $parent->textContent;
+                // Simple regex extraction if structure is predictably: Name ... Total ... Success ... Return
+                // This is a guess, but robust for many layouts
+                
+                // Get all numbers
+                preg_match_all('/\d+/', $text, $matches);
+                $nums = $matches[0] ?? [];
+                
+                // Usually order is: Total, Delivered, Returned (or variants)
+                // If we have at least 2 numbers, use them.
+                if (count($nums) >= 2) {
+                    $orders = (int)$nums[0];
+                    $delivered = (int)$nums[1];
+                    $cancelled = (int)($nums[2] ?? 0); // optional
+                    
+                    // If numbers seem swapped (delivered > orders), swap them
+                    if ($delivered > $orders) { 
+                        $temp = $orders; $orders = $delivered; $delivered = $temp;
+                    }
+
+                     $courier_data[] = [
+                        'courier' => $courierName,
+                        'orders' => $orders,
+                        'delivered' => $delivered,
+                        'cancelled' => $cancelled,
+                        'cancel_rate' => ($orders > 0 ? round(($cancelled/$orders)*100) : 0) . '%',
+                        'server' => "https://www.bdcommerce.app"
+                    ];
+                }
+            }
+        }
+    }
+
+    return empty($courier_data) ? ['error' => 'No data found on BDCommerce'] : $courier_data;
 }
 
 
