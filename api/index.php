@@ -93,13 +93,28 @@ switch ($action) {
             SELECT u.plan_id, p.name as plan_name, p.order_limit_daily, 
                    (p.order_limit_monthly + IFNULL(u.extra_order_limit, 0)) as order_limit_monthly, 
                    (p.ai_parsing_limit + IFNULL(u.extra_ai_parsed_limit, 0)) as ai_parsing_limit,
+                   p.can_parse_ai, p.can_autocomplete, p.can_check_risk, p.can_correct_address, p.can_show_ads,
+                   u.can_manual_parse,
                    u.plan_expiry_date, u.daily_order_count, u.monthly_order_count, u.monthly_ai_parsed_count
             FROM users u
             JOIN plans p ON u.plan_id = p.id
             WHERE u.id = ?
         ");
         $stmt_user->execute([$user_id]);
-        json_response($stmt_user->fetch());
+        $data = $stmt_user->fetch(PDO::FETCH_ASSOC);
+
+        if ($data) {
+            $data['permissions'] = [
+                'can_parse_ai' => (bool) ($data['can_parse_ai'] ?? false),
+                'can_autocomplete' => (bool) ($data['can_autocomplete'] ?? false),
+                'can_check_risk' => (bool) ($data['can_check_risk'] ?? false),
+                'can_correct_address' => (bool) ($data['can_correct_address'] ?? false),
+                'can_show_ads' => (bool) ($data['can_show_ads'] ?? false),
+                'can_manual_parse' => (bool) ($data['can_manual_parse'] ?? false)
+            ];
+        }
+
+        json_response($data);
         break;
 
     case 'get_available_plans':
@@ -145,25 +160,6 @@ switch ($action) {
         json_response($stmt->fetchAll());
         break;
 
-    case 'get_subscription_data':
-        $stmt = $pdo->prepare("
-            SELECT 
-                p.name as plan_name,
-                p.id as plan_id,
-                p.order_limit_daily,
-                p.order_limit_monthly,
-                p.ai_parsing_limit,
-                u.daily_order_count,
-                u.monthly_order_count,
-                u.monthly_ai_parsed_count,
-                u.plan_expiry_date
-            FROM users u
-            JOIN plans p ON u.plan_id = p.id
-            WHERE u.id = ?
-        ");
-        $stmt->execute([$user_id]);
-        json_response($stmt->fetch(PDO::FETCH_ASSOC));
-        break;
     // Add this case inside your main switch ($data->action)
     case 'save_parser_settings':
         if (!isset($_SESSION['user_id'])) {

@@ -116,6 +116,9 @@ async function renderAppView() {
 async function renderPlanStatus() {
     try {
         const status = await apiCall('get_subscription_data');
+        if (status.permissions) {
+            userPermissions = status.permissions;
+        }
         isPremiumUser = status.plan_id > 1;
         updateFeatureVisibilityBasedOnPlan();
 
@@ -324,7 +327,8 @@ function validateAllParcels() {
         createBtn.prop('disabled', true).text(`Fix ${invalidCards} Invalid Parcel(s)`);
         createBtn.css('opacity', '0.6').css('cursor', 'not-allowed');
     } else {
-        createBtn.prop('disabled', false).text('Create Orders');
+        createBtn.prop('disabled', false);
+        updateCreateOrderButtonText();
         createBtn.css('opacity', '1').css('cursor', 'pointer');
     }
 }
