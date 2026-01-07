@@ -155,8 +155,8 @@ switch ($action) {
         $stmt = $pdo->prepare("
             SELECT s.created_at, s.amount_paid, s.status, p.name as plan_name, pm.name as payment_method_name
             FROM subscriptions s
-            LEFT JOIN plans p ON s.plan_id = p.id
-            LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
+            JOIN plans p ON s.plan_id = p.id
+            JOIN payment_methods pm ON s.payment_method_id = pm.id
             WHERE s.user_id = ?
             ORDER BY s.created_at ASC
         ");

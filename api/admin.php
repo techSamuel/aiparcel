@@ -642,24 +642,6 @@ function handle_update_user_plan()
         sendSubscriptionConfirmationEmail($user_email, $new_plan_id, $expiry_date);
     }
 
-    // --- LOGGING: Add entry to subscription history ---
-    // We assume a 'Manual/Admin' action. We can use a dummy payment method ID or NULL if allowed.
-    // Ideally we should use a method ID that represents 'System' or 'Admin'. 
-    // For now we will try to use NULL for method_id and 'Manual Update' as transaction_id.
-
-    // Check if we can find a payment method named 'Admin' or similar, otherwise NULL
-    // If insert fails due to constraint, we might need a fallback.
-    // Safe approach: transaction_id = 'ADMIN_CHANGE', sender_number = 'Admin', status = 'approved'
-
-    try {
-        $stmt_hist = $pdo->prepare("INSERT INTO subscriptions (user_id, plan_id, payment_method_id, sender_number, transaction_id, amount_paid, status, created_at) VALUES (?, ?, NULL, ?, ?, ?, ?, NOW())");
-        $stmt_hist->execute([$target_uid, $new_plan_id, 'Admin', 'ADMIN_PLAN_CHANGE', 0, 'approved']);
-    } catch (Exception $e) {
-        // Log error but don't fail the request
-        error_log("Failed to insert subscription history for admin plan change: " . $e->getMessage());
-    }
-    // --------------------------------------------------
-
     json_response(['success' => true]);
 }
 
