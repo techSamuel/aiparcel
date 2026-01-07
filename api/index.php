@@ -2323,7 +2323,7 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
 {
     // 1. Extract District Name using AI
     // Force English Output for District Name, handling Bengali inputs.
-    $prompt_district = "Analyze this address: '$address'. Extract the detailed 'District Name' in English Spelling (e.g. 'Narsingdi', 'Dhaka'). If input is Bengali, translate the District to English. Return JSON: {\"district\": \"DistrictNameInEnglish\"}";
+    $prompt_district = "Analyze this address: '$address'. Extract the valid 'District Name' of Bangladesh in English Spelling (e.g. 'Narsingdi', 'Dhaka'). If input is Bengali, translate the District to English. Return JSON: {\"district\": \"DistrictNameInEnglish\"}";
 
     $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
     $api_body = ['contents' => [['parts' => [['text' => $prompt_district]]]], 'generationConfig' => ['responseMimeType' => 'application/json']];
