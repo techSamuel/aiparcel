@@ -116,12 +116,19 @@ async function renderAppView() {
 async function renderPlanStatus() {
     try {
         const status = await apiCall('get_subscription_data');
-        if (status.permissions) {
-            userPermissions = status.permissions;
-        }
         // Ensure API Key is persistent
         if (status.geminiApiKey) {
+            console.log("DEBUG: Updating geminiApiKey from:", geminiApiKey, "to:", status.geminiApiKey);
             geminiApiKey = status.geminiApiKey;
+        } else {
+            console.log("DEBUG: status.geminiApiKey missing! Current global:", geminiApiKey);
+        }
+
+        if (status.permissions) {
+            console.log("DEBUG: Updating userPermissions from:", userPermissions, "to:", status.permissions);
+            userPermissions = status.permissions;
+        } else {
+            console.log("DEBUG: status.permissions missing in response:", status);
         }
         isPremiumUser = status.plan_id > 1;
         updateFeatureVisibilityBasedOnPlan();
@@ -159,7 +166,8 @@ async function renderPlanStatus() {
 
 function updateFeatureVisibilityBasedOnPlan() {
     const canParseAI = userPermissions.can_parse_ai && geminiApiKey;
-    $('#parseWithAIBtn').toggle(canParseAI);
+    console.log("DEBUG: Visibility Check - Permissions:", userPermissions, "Key Present:", !!geminiApiKey, "canParseAI Result:", canParseAI);
+    $('#parseWithAIBtn').toggle(!!canParseAI);
     $('#parseAndAutocompleteBtn').toggle(userPermissions.can_autocomplete);
     $('#checkAllRiskBtn').toggle(userPermissions.can_check_risk);
 
