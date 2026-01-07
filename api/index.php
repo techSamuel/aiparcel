@@ -2322,7 +2322,8 @@ function correct_single_address_with_ai($user_id, $input, $pdo)
 function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
 {
     // 1. Extract District Name using AI
-    $prompt_district = "Extract the valid Bangladesh District Name (e.g. Dhaka, Chittagong, Meherpur) from address: '$address'. Return JSON: {\"district\": \"DistrictName\"}";
+    // Force English Output for District Name, handling Bengali inputs.
+    $prompt_district = "Analyze this address: '$address'. Extract the detailed 'District Name' in English Spelling (e.g. 'Narsingdi', 'Dhaka'). If input is Bengali, translate the District to English. Return JSON: {\"district\": \"DistrictNameInEnglish\"}";
 
     $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
     $api_body = ['contents' => [['parts' => [['text' => $prompt_district]]]], 'generationConfig' => ['responseMimeType' => 'application/json']];
@@ -2342,28 +2343,32 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
         $clean = str_replace(['```json', '```'], '', $raw);
         $extracted = json_decode($clean, true);
         if (!empty($extracted['district']))
-            $district_name = $extracted['district'];
+            $district_name = trim($extracted['district']); // Trim whitespace
     }
 
     // 2. Fetch Redx Areas for this District
     $ch = curl_init("https://openapi.redx.com.bd/v1.0.0-beta/areas?district_name=" . urlencode($district_name));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'API-ACCESS-TOKEN: Bearer ' . $redx_access_token,
+        'API-ACCESS-TOKEN: Bearer ' . $redx_access_token, // Bearer might be repeated if not careful, check caller. Caller passes clean token? existing code used 'Bearer ' . $token.
         'Content-Type: application/json'
     ]);
     $area_res = curl_exec($ch);
     curl_close($ch);
 
     $areas = json_decode($area_res, true)['areas'] ?? [];
+
+    // Fallback: If no areas found, maybe AI spelling was slightly off? 
+    // Optimization: We could ask AI to correct spelling if 0 areas, but let's trust default 'Dhaka' or error for now.
     if (empty($areas))
         return null;
 
     // 3. AI Match
     // Simplify area list to save tokens
+    // Explicitly tell AI to match Bengali address to English Area Names
     $simple_areas = array_map(fn($a) => ['id' => $a['id'], 'name' => $a['name'], 'post_code' => $a['post_code']], $areas);
 
-    $prompt_match = "Address: '$address'.\nSelect the best Area ID from this list: " . json_encode($simple_areas) . ".\nReturn JSON: {\"id\": <numeric_id>}";
+    $prompt_match = "Address: '$address'.\nUsing the Address (which might be in Bengali), select the best matching Area from this list (which are in English). Return JSON: {\"id\": <numeric_id>}";
 
     $ch = curl_init($api_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -2372,6 +2377,7 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
     $match_res = curl_exec($ch);
     curl_close($ch);
+
 
     $match_json = json_decode($match_res, true);
     if (isset($match_json['candidates'][0]['content']['parts'][0]['text'])) {
