@@ -7,7 +7,25 @@ async function apiCall(action, body = {}) {
             body: JSON.stringify({ action, ...body }),
             credentials: 'same-origin'
         });
-        const data = await response.json();
+
+        // Get response as text first to handle non-JSON responses
+        const text = await response.text();
+
+        // Check if response looks like HTML (server error page)
+        if (text.startsWith('<!') || text.startsWith('<html') || text.startsWith('<br')) {
+            console.error('API returned HTML instead of JSON:', text.substring(0, 200));
+            throw new Error('Server returned an error page. Please try again.');
+        }
+
+        // Try to parse as JSON
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (parseError) {
+            console.error('JSON Parse Error:', text.substring(0, 500));
+            throw new Error('Server response was not valid JSON. Please try again.');
+        }
+
         if (!response.ok) {
             throw new Error(data.error || `HTTP error! status: ${response.status}`);
         }
