@@ -1791,6 +1791,14 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
                     continue; // Try next server to verify
                 }
 
+                // Validate data structure has proper courier fields
+                $firstItem = $data[0] ?? null;
+                if (!$firstItem || !isset($firstItem['courier'])) {
+                    $lastError = 'Server returned malformed courier data';
+                    error_log("Server {$server['url']} returned data without 'courier' field");
+                    continue;
+                }
+
                 // Success with trustworthy data!
                 json_response($data);
                 return;
