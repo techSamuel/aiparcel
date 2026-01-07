@@ -2028,6 +2028,9 @@ function tryFraudCheckOnecodesoft($phone)
         }
     }
 
+    return empty($courier_data) ? ['error' => 'No data found on Onecodesoft'] : $courier_data;
+}
+
 
 function tryFraudCheckBDCommerce($phone)
 {
