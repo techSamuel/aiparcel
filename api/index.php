@@ -1149,8 +1149,14 @@ function create_order($user_id, $input, $pdo)
                     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                     curl_close($ch);
 
+
                     $res_json = json_decode($res, true);
-                    $responses[] = ['order_id' => $payload['merchant_invoice_id'], 'status' => $code, 'response' => $res_json];
+                    $responses[] = [
+                        'order_id' => $payload['merchant_invoice_id'],
+                        'status' => $code,
+                        'response' => $res_json,
+                        'debug_area' => $area_data
+                    ];
 
                     if ($code >= 200 && $code < 300)
                         $success_count++;
