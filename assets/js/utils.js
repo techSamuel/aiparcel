@@ -101,6 +101,51 @@ function displayApiResponse(data) {
      </p>`;
         responseContainer.html(messageHtml);
     }
+    // Case 5: Redx Hybrid/Background Process Response (DataTable)
+    else if (data && data.bg_process === true && Array.isArray(data.results)) {
+        let successCount = data.success_count || 0;
+        let totalCount = data.results.length;
+        let messageHtml = `<p class="message success" style="display:block;">Processed ${totalCount} Redx order(s). Success: ${successCount}</p>`;
+
+        let tableHtml = `
+        ${messageHtml}
+        <table id="api-response-datatable" class="display api-response-table" style="width:100%"></table>
+        `;
+        responseContainer.html(tableHtml);
+
+        $('#api-response-datatable').DataTable({
+            data: data.results,
+            columns: [
+                { title: "Order ID", data: "order_id" },
+                {
+                    title: "Tracking ID",
+                    data: "response",
+                    render: function (response) {
+                        return response && response.tracking_id ? `<strong>${response.tracking_id}</strong>` : '<span class="text-muted">-</span>';
+                    }
+                },
+                {
+                    title: "Area",
+                    data: "debug_area",
+                    render: function (area) {
+                        return area ? `${area.name} <small class="text-muted">(${area.id})</small>` : '<span class="text-muted">N/A</span>';
+                    }
+                },
+                {
+                    title: "Status",
+                    data: "status",
+                    render: function (status) {
+                        return status === 201
+                            ? `<span class="status-success">Success (${status})</span>`
+                            : `<span class="status-error">Error (${status})</span>`;
+                    }
+                }
+            ],
+            destroy: true, pageLength: 10, lengthChange: true, searching: true,
+            scrollX: true,
+            order: [[3, 'asc']] // Sort by status (success usually first/last depending on code)
+        });
+    }
     // Case 5: Fallback for Errors and other formats
     else {
         let type = (data && (data.error || (data.type && data.type !== 'success'))) ? 'error' : 'success';
