@@ -297,13 +297,29 @@ function createParcelCard(parcelData) {
 
     // Check for duplicate order
     const duplicateInfo = duplicatePhoneData[phone];
-    const duplicateBadgeHtml = duplicateInfo ? `
-        <div class="duplicate-warning-badge" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 8px; margin-top: 8px; font-size: 12px;">
-            <strong style="color: #856404;">⚠️ DUPLICATE ORDER</strong><br>
-            <span style="color: #664d03;">Previous: ${duplicateInfo.courier_type.toUpperCase()} | Tracking: ${duplicateInfo.tracking_id || 'N/A'}</span><br>
-            <span style="color: #664d03;">Order ID: ${duplicateInfo.order_id || 'N/A'} | Date: ${new Date(duplicateInfo.created_at).toLocaleDateString('en-GB')}</span>
-        </div>
-    ` : '';
+    let duplicateBadgeHtml = '';
+
+    if (duplicateInfo) {
+        // Priority 1: Local Duplicate (Danger)
+        if (duplicateInfo.is_local_duplicate) {
+            duplicateBadgeHtml += `
+            <div class="duplicate-warning-badge" style="background: #eafaeb; border: 1px solid #d63384; border-radius: 4px; padding: 8px; margin-top: 8px; font-size: 12px; background-color: #fff0f0; border-color: #ff0000;">
+                <strong style="color: #d60000;">⚠️ SAME BATCH DUPLICATE (${duplicateInfo.local_count}x)</strong><br>
+                <span style="color: #a00;">This phone number appears multiple times in this list!</span>
+            </div>`;
+        }
+
+        // Priority 2: Database Duplicate (Warning)
+        // If it has courier_type (prop from DB response), show history
+        if (duplicateInfo.courier_type) {
+            duplicateBadgeHtml += `
+            <div class="duplicate-warning-badge" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 8px; margin-top: 8px; font-size: 12px;">
+                <strong style="color: #856404;">⚠️ PREVIOUSLY ORDERED</strong><br>
+                <span style="color: #664d03;">Previous: ${duplicateInfo.courier_type.toUpperCase()} | Tracking: ${duplicateInfo.tracking_id || 'N/A'}</span><br>
+                <span style="color: #664d03;">Order ID: ${duplicateInfo.order_id || 'N/A'} | Date: ${new Date(duplicateInfo.created_at).toLocaleDateString('en-GB')}</span>
+            </div>`;
+        }
+    }
 
     card.html(`
         <div class="details">
@@ -954,29 +970,51 @@ parseWithAIBtn.addEventListener('click', async () => {
 // Check for duplicate phone numbers and mark parcel cards
 async function checkAndMarkDuplicates() {
     const phones = [];
+    const localCounts = {};
+
     $('.parcel-card').each(function () {
         const data = JSON.parse($(this).attr('data-order-data'));
-        if (data.recipient_phone && data.recipient_phone !== 'N/A') {
-            phones.push(data.recipient_phone);
+        const p = data.recipient_phone;
+        if (p && p !== 'N/A') {
+            phones.push(p);
+            localCounts[p] = (localCounts[p] || 0) + 1;
         }
     });
 
     if (phones.length === 0) return;
 
+    duplicatePhoneData = {}; // Reset
+
+    // 1. Check API (DB Duplicates)
     try {
-        duplicatePhoneData = await apiCall('check_duplicate_phones', { phones });
-        // Re-render cards if duplicates found
-        if (Object.keys(duplicatePhoneData).length > 0) {
-            const allData = [];
-            $('.parcel-card').each(function () {
-                allData.push(JSON.parse($(this).attr('data-order-data')));
-            });
-            parsedDataContainer.innerHTML = '';
-            allData.forEach(p => createParcelCard(p));
-            updateSummary();
-        }
+        const dbDuplicates = await apiCall('check_duplicate_phones', { phones });
+        duplicatePhoneData = { ...dbDuplicates };
     } catch (e) {
         console.error("Duplicate check failed:", e);
+    }
+
+    // 2. Check Local Duplicates
+    let hasLocalDuplicates = false;
+    for (const [phone, count] of Object.entries(localCounts)) {
+        if (count > 1) {
+            hasLocalDuplicates = true;
+            if (!duplicatePhoneData[phone]) {
+                duplicatePhoneData[phone] = {};
+            }
+            duplicatePhoneData[phone].is_local_duplicate = true;
+            duplicatePhoneData[phone].local_count = count;
+        }
+    }
+
+    // Re-render cards if duplicates found (DB or Local)
+    if (Object.keys(duplicatePhoneData).length > 0) {
+        const allData = [];
+        $('.parcel-card').each(function () {
+            allData.push(JSON.parse($(this).attr('data-order-data')));
+        });
+        parsedDataContainer.innerHTML = '';
+        allData.forEach(p => createParcelCard(p));
+        updateSummary();
     }
 }
 
