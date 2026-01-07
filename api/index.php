@@ -1913,6 +1913,8 @@ function tryFraudCheckLink($phone)
         $cells = $row->getElementsByTagName('td');
         if ($cells->length >= 4) {
             $courierNode = $row->getElementsByTagName('b');
+            $courierName = $courierNode->length > 0 ? trim($courierNode->item(0)->nodeValue) : trim($cells->item(0)->textContent);
+
             $orders = (int) trim($cells->item(1)->nodeValue);
             $delivered = (int) trim($cells->item(2)->nodeValue);
             $cancelled = (int) trim($cells->item(3)->nodeValue);
@@ -1920,7 +1922,7 @@ function tryFraudCheckLink($phone)
             $cancelRate = $total > 0 ? round(($cancelled / $total) * 100, 2) : 0;
 
             $courier_data[] = [
-                'courier' => $courierNode->length > 0 ? trim($courierNode->item(0)->nodeValue) : 'N/A',
+                'courier' => $courierName ?: 'N/A',
                 'orders' => $orders,
                 'delivered' => $delivered,
                 'cancelled' => $cancelled,
