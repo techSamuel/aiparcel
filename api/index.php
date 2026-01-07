@@ -498,6 +498,18 @@ function add_or_update_store($user_id, $input, $pdo)
     $credentials = json_encode($input['credentials']);
     $editing_id = $input['editingId'] ?? null;
 
+    // --- AUTO-MIGRATE: Ensure courier_type supports 'redx' (Convert ENUM to VARCHAR) ---
+    try {
+        $stmt_col = $pdo->query("SHOW COLUMNS FROM stores LIKE 'courier_type'");
+        $col_info = $stmt_col->fetch(PDO::FETCH_ASSOC);
+        if ($col_info && stripos($col_info['Type'], 'enum') !== false) {
+            // It's an ENUM, convert to VARCHAR to support Redx and future couriers
+            $pdo->exec("ALTER TABLE stores MODIFY COLUMN courier_type VARCHAR(50) NOT NULL");
+        }
+    } catch (Exception $e) { /* Ignore if already varchar or permission denied */
+    }
+    // ----------------------------------------------------------------------------------
+
     if ($editing_id) {
         $stmt = $pdo->prepare("UPDATE stores SET store_name = ?, courier_type = ?, credentials = ? WHERE id = ? AND user_id = ?");
         $stmt->execute([$store_name, $courier_type, $credentials, $editing_id, $user_id]);
