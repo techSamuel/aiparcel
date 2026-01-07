@@ -20,6 +20,37 @@ if (!defined('APP_URL')) {
         font-size: 12px;
         margin-bottom: 5px;
     }
+
+    .courier-badge.redx {
+        background-color: #ff3333;
+        /* Redx Color */
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-left: 5px;
+        text-transform: capitalize;
+    }
+
+    .courier-badge.steadfast {
+        background-color: #1abc9c;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-left: 5px;
+        text-transform: capitalize;
+    }
+
+    .courier-badge.pathao {
+        background-color: #e74c3c;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-left: 5px;
+        text-transform: capitalize;
+    }
 </style>
 <div id="app-view"
     style="display: block; width: 100%; max-width: 900px; margin: 0 auto; padding: 20px; background: var(--white); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
