@@ -2054,63 +2054,65 @@ function tryFraudCheckBDCommerce($phone)
     // Look for rows that look like courier data
     // Based on limited view, likely divs with flex/grid or table rows
     // Let's look for known courier names and traverse relative to them
+    // Find all data rows. They seem to use border-b class for separation
+    // The header also has border-b in some structures, but we can filter by looking for valid courier images
+    $rows = $xpath->query("//div[contains(@class, 'border-b')]");
+
     $courier_data = [];
-    $couriers = ['RedX', 'Pathao', 'Steadfast', 'Paperfly', 'eCourier'];
 
-    foreach ($couriers as $courierName) {
-        // Find element containing courier name (case insensitive)
-        $node = $xpath->query("//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '" . strtolower($courierName) . "')]")->item(0);
+    foreach ($rows as $row) {
+        // 1. Identify Courier from Image Source
+        $imgNode = $xpath->query(".//img", $row)->item(0);
+        if (!$imgNode)
+            continue;
 
-        if ($node) {
-            // Check if it's inside a row-like structure
-            // Usually data is in siblings or parent's siblings
-            // Let's assume a row structure: Courier | Total | Delivered | Returned | ...
+        $src = $imgNode->getAttribute('src') . $imgNode->getAttribute('srcset');
+        $courierName = null;
 
-            // Navigate up to a container row if possible, or look for following siblings with numbers
-            $parent = $node->parentNode;
-            while ($parent && $parent->nodeName !== 'tr' && $parent->nodeName !== 'div' && $parent->nodeName !== 'body') {
-                // Try to find a parent that has multiple children (columns)
-                if ($parent->childNodes->length > 3) {
-                    break;
-                }
-                $parent = $parent->parentNode;
-            }
+        if (stripos($src, 'pathao') !== false)
+            $courierName = 'Pathao';
+        elseif (stripos($src, 'redx') !== false)
+            $courierName = 'RedX';
+        elseif (stripos($src, 'steadfast') !== false)
+            $courierName = 'Steadfast';
+        elseif (stripos($src, 'paperfly') !== false)
+            $courierName = 'Paperfly';
+        elseif (stripos($src, 'ecourier') !== false)
+            $courierName = 'eCourier';
+        elseif (stripos($src, 'parceldex') !== false)
+            $courierName = 'Parceldex';
+        elseif (stripos($src, 'carrybee') !== false)
+            $courierName = 'Carrybee';
 
-            if ($parent) {
-                // Extract numbers from this row/container
-                // We'll look for all numbers in the text content of the row
-                $text = $parent->textContent;
-                // Simple regex extraction if structure is predictably: Name ... Total ... Success ... Return
-                // This is a guess, but robust for many layouts
+        if (!$courierName)
+            continue; // Skip unknown rows
 
-                // Get all numbers
-                preg_match_all('/\d+/', $text, $matches);
-                $nums = $matches[0] ?? [];
+        // 2. Extract Stats based on classes
+        // Total is usually in a text-center span without danger/secondary colors
+        // Cancelled is in 'text-danger'
+        // Delivered is in 'text-secondary'
 
-                // Usually order is: Total, Delivered, Returned (or variants)
-                // If we have at least 2 numbers, use them.
-                if (count($nums) >= 2) {
-                    $orders = (int) $nums[0];
-                    $delivered = (int) $nums[1];
-                    $cancelled = (int) ($nums[2] ?? 0); // optional
+        $totalNode = $xpath->query(".//span[contains(@class, 'text-center')]", $row)->item(0);
+        $cancelledNode = $xpath->query(".//span[contains(@class, 'text-danger')]", $row)->item(0);
+        $deliveredNode = $xpath->query(".//span[contains(@class, 'text-secondary')]", $row)->item(0);
 
-                    // If numbers seem swapped (delivered > orders), swap them
-                    if ($delivered > $orders) {
-                        $temp = $orders;
-                        $orders = $delivered;
-                        $delivered = $temp;
-                    }
+        $orders = $totalNode ? (int) $totalNode->textContent : 0;
+        $cancelled = $cancelledNode ? (int) $cancelledNode->textContent : 0;
+        $delivered = $deliveredNode ? (int) $deliveredNode->textContent : 0;
 
-                    $courier_data[] = [
-                        'courier' => $courierName,
-                        'orders' => $orders,
-                        'delivered' => $delivered,
-                        'cancelled' => $cancelled,
-                        'cancel_rate' => ($orders > 0 ? round(($cancelled / $orders) * 100) : 0) . '%',
-                        'server' => "https://www.bdcommerce.app"
-                    ];
-                }
-            }
+        // Validation: If Total < Delivered + Cancelled, trust the sum? 
+        // Or usually the 'Total' column is reliable.
+        // In the HTML we saw: Total 16, Failed 12, Success 4. 12+4=16. Matches.
+
+        if ($orders > 0 || $delivered > 0 || $cancelled > 0) {
+            $courier_data[] = [
+                'courier' => $courierName,
+                'orders' => $orders,
+                'delivered' => $delivered,
+                'cancelled' => $cancelled,
+                'cancel_rate' => ($orders > 0 ? round(($cancelled / $orders) * 100) : 0) . '%',
+                'server' => "https://www.bdcommerce.app"
+            ];
         }
     }
 
