@@ -304,8 +304,8 @@ function createParcelCard(parcelData) {
         if (duplicateInfo.is_local_duplicate) {
             duplicateBadgeHtml += `
             <div class="duplicate-warning-badge" style="background: #eafaeb; border: 1px solid #d63384; border-radius: 4px; padding: 8px; margin-top: 8px; font-size: 12px; background-color: #fff0f0; border-color: #ff0000;">
-                <strong style="color: #d60000;">⚠️ SAME BATCH DUPLICATE (${duplicateInfo.local_count}x)</strong><br>
-                <span style="color: #a00;">This phone number appears multiple times in this list!</span>
+                <strong style="color: #d60000;">⚠️ ডুপ্লিকেট ডাটা (${duplicateInfo.local_count}x)</strong><br>
+                <span style="color: #a00;">এই নম্বরটি বর্তমান লিস্টে একাধিকবার আছে!</span>
             </div>`;
         }
 
@@ -314,9 +314,9 @@ function createParcelCard(parcelData) {
         if (duplicateInfo.courier_type) {
             duplicateBadgeHtml += `
             <div class="duplicate-warning-badge" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 8px; margin-top: 8px; font-size: 12px;">
-                <strong style="color: #856404;">⚠️ PREVIOUSLY ORDERED</strong><br>
-                <span style="color: #664d03;">Previous: ${duplicateInfo.courier_type.toUpperCase()} | Tracking: ${duplicateInfo.tracking_id || 'N/A'}</span><br>
-                <span style="color: #664d03;">Order ID: ${duplicateInfo.order_id || 'N/A'} | Date: ${new Date(duplicateInfo.created_at).toLocaleDateString('en-GB')}</span>
+                <strong style="color: #856404;">⚠️ পূর্বের অর্ডার</strong><br>
+                <span style="color: #664d03;">কুরিয়ার: ${duplicateInfo.courier_type.toUpperCase()} | ট্র্যাকিং: ${duplicateInfo.tracking_id || 'N/A'}</span><br>
+                <span style="color: #664d03;">অর্ডার আইডি: ${duplicateInfo.order_id || 'N/A'} | তারিখ: ${new Date(duplicateInfo.created_at).toLocaleDateString('en-GB')}</span>
             </div>`;
         }
     }
