@@ -888,6 +888,10 @@ function update_profile($user_id, $input, $pdo)
         $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
         $stmt->execute([$hashed_password, $user_id]);
     }
+    if (isset($input['lastSelectedStoreId'])) {
+        $stmt = $pdo->prepare("UPDATE users SET last_selected_store_id = ? WHERE id = ?");
+        $stmt->execute([$input['lastSelectedStoreId'], $user_id]);
+    }
     json_response(['success' => true]);
 }
 

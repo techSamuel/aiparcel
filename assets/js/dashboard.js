@@ -175,15 +175,23 @@ function loadUserStores() {
     if (Object.keys(userCourierStores).length === 0) {
         $('#storeList').html('<li>No stores found.</li>');
         $('#storeSelector').html(`<option value="">Please add a store first</option>`);
+        updateCreateOrderButtonText();
         return;
     }
     for (const id in userCourierStores) {
         const store = userCourierStores[id];
-        $('#storeList').append(`<li><span>${store.storeName} <span class="courier-badge ${store.courierType}">${store.courierType}</span></span><div class="store-actions"><button class="edit-store-btn" data-id="${id}">Edit</button><button class="delete-store-btn" data-id="${id}">&times;</button></div></li>`);
+        // Ensure lowercase class for CSS matching (redx, pathao, steadfast)
+        const badgeClass = store.courierType.toLowerCase();
+        $('#storeList').append(`<li><span>${store.storeName} <span class="courier-badge ${badgeClass}">${store.courierType}</span></span><div class="store-actions"><button class="edit-store-btn" data-id="${id}">Edit</button><button class="delete-store-btn" data-id="${id}">&times;</button></div></li>`);
         $('#storeSelector').append(`<option value="${id}">${store.storeName}</option>`);
     }
+
+    // Set selected value if it exists in the list
     if (currentUser.lastSelectedStoreId && userCourierStores[currentUser.lastSelectedStoreId]) {
         storeSelector.value = currentUser.lastSelectedStoreId;
+    } else {
+        // Default to first available
+        storeSelector.value = Object.keys(userCourierStores)[0];
     }
     updateCreateOrderButtonText();
 }
@@ -192,11 +200,24 @@ function updateCreateOrderButtonText() {
     const selectedStoreId = storeSelector.value;
     if (selectedStoreId && userCourierStores[selectedStoreId]) {
         const courierType = userCourierStores[selectedStoreId].courierType;
+        // Capitalize first letter: redx -> Redx
         createOrderBtn.textContent = `Create ${courierType.charAt(0).toUpperCase() + courierType.slice(1)} Order(s)`;
     } else {
         createOrderBtn.textContent = 'Create Order(s)';
     }
 }
+
+// Persist Store Selection
+storeSelector.addEventListener('change', async function () {
+    updateCreateOrderButtonText();
+    const selectedId = this.value;
+    if (selectedId) {
+        try {
+            await apiCall('update_profile', { lastSelectedStoreId: selectedId });
+            currentUser.lastSelectedStoreId = selectedId;
+        } catch (e) { console.error("Failed to save store preference", e); }
+    }
+});
 
 function updateSummary() {
     const parcelCards = $('.parcel-card');
