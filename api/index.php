@@ -104,6 +104,10 @@ switch ($action) {
         $data = $stmt_user->fetch(PDO::FETCH_ASSOC);
 
         if ($data) {
+            // Re-fetch Gemini API Key to ensure persistence
+            $stmt_key = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'gemini_api_key'");
+            $data['geminiApiKey'] = $stmt_key->fetchColumn();
+
             $data['permissions'] = [
                 'can_parse_ai' => (bool) ($data['can_parse_ai'] ?? false),
                 'can_autocomplete' => (bool) ($data['can_autocomplete'] ?? false),

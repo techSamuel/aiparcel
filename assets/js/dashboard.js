@@ -119,6 +119,10 @@ async function renderPlanStatus() {
         if (status.permissions) {
             userPermissions = status.permissions;
         }
+        // Ensure API Key is persistent
+        if (status.geminiApiKey) {
+            geminiApiKey = status.geminiApiKey;
+        }
         isPremiumUser = status.plan_id > 1;
         updateFeatureVisibilityBasedOnPlan();
 
