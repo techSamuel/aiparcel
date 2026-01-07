@@ -956,6 +956,7 @@ createOrderBtn.addEventListener('click', async () => {
     } finally {
         loader.style.display = 'none';
         createOrderBtn.disabled = false;
+        updateCreateOrderButtonText();
     }
 });
 

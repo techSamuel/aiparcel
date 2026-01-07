@@ -144,6 +144,26 @@ switch ($action) {
         $stmt->execute([$user_id]);
         json_response($stmt->fetchAll());
         break;
+
+    case 'get_subscription_data':
+        $stmt = $pdo->prepare("
+            SELECT 
+                p.name as plan_name,
+                p.id as plan_id,
+                p.order_limit_daily,
+                p.order_limit_monthly,
+                p.ai_parsing_limit,
+                u.daily_order_count,
+                u.monthly_order_count,
+                u.monthly_ai_parsed_count,
+                u.plan_expiry_date
+            FROM users u
+            JOIN plans p ON u.plan_id = p.id
+            WHERE u.id = ?
+        ");
+        $stmt->execute([$user_id]);
+        json_response($stmt->fetch(PDO::FETCH_ASSOC));
+        break;
     // Add this case inside your main switch ($data->action)
     case 'save_parser_settings':
         if (!isset($_SESSION['user_id'])) {
