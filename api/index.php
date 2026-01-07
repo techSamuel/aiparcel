@@ -2380,6 +2380,25 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
             $upazila_name = trim($extracted['upazila']);
     }
 
+    // --- CODE FIX: Redx Specific District Mapping (Handling Typos/Legacy) ---
+    // Maps Standard English -> Redx Database Value
+    $redx_district_map = [
+        'narsingdi' => 'Norshingdi', // Redx Typo
+        'chattogram' => 'Chittagong', // Legacy
+        'cumilla' => 'Comilla',
+        'barishal' => 'Barisal',
+        'jashore' => 'Jessore',
+        'bogura' => 'Bogra',
+        'cox\'s bazar' => "Cox's Bazar",
+        'chapainawabganj' => 'Chapainawabganj',
+        'mylensingh' => 'Mymensingh'
+    ];
+    $normalized_input = strtolower($district_name);
+    if (isset($redx_district_map[$normalized_input])) {
+        $district_name = $redx_district_map[$normalized_input];
+    }
+    // ------------------------------------------------------------------------
+
     // 3. Local Filter: Filter Cached List by District AND Upazila
     $candidates = array_filter($areas, function ($area) use ($district_name) {
         // District Filter (High Priority)
