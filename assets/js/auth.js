@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // --- LOGIN LOGIC ---
                     const data = await apiCall('login', { email, password });
                     if (data.loggedIn) {
-                        try { if (typeof fbq !== 'undefined') fbq('track', 'Login'); } catch (e) { console.error('Pixel Error:', e); }
+                        try { if (typeof fbq !== 'undefined') fbq('track', 'Login', {}, { eventID: data.eventId }); } catch (e) { console.error('Pixel Error:', e); }
                         // Reload to let PHP router handle the dashboard view
                         window.location.reload();
                     }

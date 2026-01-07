@@ -27,6 +27,7 @@ define('ADMIN_NOTIFICATION_EMAIL', 'rodalsoft@gmail.com'); // Email for purchase
 
 // Facebook Pixel Configuration
 define('FACEBOOK_PIXEL_ID', '1998033140769737'); // AiParcel Pixel ID
+define('FACEBOOK_ACCESS_TOKEN', 'YOUR_ACCESS_TOKEN_HERE'); // Get this from Events Manager -> Settings -> Generate Access Token
 
 // Google OAuth Configuration
 // Client ID and Secret are now managed via the Admin Panel -> Settings

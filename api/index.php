@@ -5,6 +5,7 @@ session_start();
 use PHPMailer\PHPMailer\PHPMailer;
 require_once 'config.php';
 require_once 'func_email.php';
+require_once 'facebook_capi.php'; // Include CAPI Helper
 use PHPMailer\PHPMailer\Exception;
 
 // Decode JSON input from the request body
@@ -148,7 +149,34 @@ switch ($action) {
         // Notify admin
         sendAdminPurchaseNotification($user_id, $plan_id, $price, $sender, $trx_id);
 
-        json_response(['success' => true, 'message' => 'Your request has been submitted and is pending review.']);
+        // --- CAPI Integration (Purchase) ---
+        $eventId = 'purchase_' . uniqid('', true);
+
+        // Fetch user details for CAPI
+        $stmt_u = $pdo->prepare("SELECT email, display_name FROM users WHERE id = ?");
+        $stmt_u->execute([$user_id]);
+        $userCapi = $stmt_u->fetch();
+
+        // Fetch Plan Name
+        $stmt_pn = $pdo->prepare("SELECT name FROM plans WHERE id = ?");
+        $stmt_pn->execute([$plan_id]);
+        $planName = $stmt_pn->fetchColumn();
+
+        $userDataCapi = [
+            'em' => $userCapi['email'] ?? '',
+            'fn' => explode(' ', $userCapi['display_name'] ?? '')[0]
+        ];
+        $customData = [
+            'value' => $price,
+            'currency' => 'BDT',
+            'content_name' => $planName,
+            'content_type' => 'product',
+            'content_ids' => [$plan_id]
+        ];
+        sendFacebookCAPIEvent('Purchase', $userDataCapi, $customData, $eventId);
+        // -----------------------------------
+
+        json_response(['success' => true, 'message' => 'Your request has been submitted and is pending review.', 'eventId' => $eventId]);
         break;
     // In the main switch($action) block in api/index.php
     case 'get_my_subscriptions':
@@ -314,9 +342,19 @@ function handle_auth($action, $input, $pdo)
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['is_admin'] = (bool) $user['is_admin'];
 
+                // --- CAPI Integration (Login) ---
+                $eventId = 'login_' . uniqid('', true);
+                $userDataCapi = [
+                    'em' => $user['email'],
+                    'fn' => explode(' ', $user['displayName'])[0] ?? ''
+                ];
+                sendFacebookCAPIEvent('Login', $userDataCapi, [], $eventId);
+                // --------------------------------
+
                 json_response([
                     'loggedIn' => true,
-                    'user' => $user
+                    'user' => $user,
+                    'eventId' => $eventId
                 ]);
 
                 // Send Welcome Email if first login

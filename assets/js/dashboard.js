@@ -1243,11 +1243,13 @@ $('#submit-payment-btn').on('click', async function () {
         // Pixel Tracking
         try {
             if (typeof fbq !== 'undefined' && selectedPlan) {
-                fbq('track', 'Subscribe', {
+                fbq('track', 'Purchase', {
                     value: selectedPlan.price,
                     currency: 'BDT',
-                    predicted_ltv: selectedPlan.price
-                });
+                    content_name: selectedPlan.name,
+                    content_type: 'product',
+                    content_ids: [selectedPlan.id]
+                }, { eventID: result.eventId }); // Deduplication
             }
         } catch (e) { console.error('Pixel Error:', e); }
 
