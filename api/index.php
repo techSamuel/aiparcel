@@ -1692,6 +1692,7 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
             'url' => 'https://fraud-checker.storex.com.bd/',
             'function' => 'tryFraudCheckStorex'
         ],
+        /* Temporarily disabled: Returns N/A for major couriers
         [
             'url' => 'https://fraudchecker.link/free-fraud-checker-bd/',
             'function' => 'tryFraudCheckLink'
@@ -1700,6 +1701,7 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
             'url' => 'https://elitemart.com.bd/fraud-check',
             'function' => 'tryFraudCheckElite'
         ],
+        */
         [
             'url' => 'https://onecodesoft.com/fraudchecker',
             'function' => 'tryFraudCheckOnecodesoft'
