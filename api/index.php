@@ -2358,10 +2358,15 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
 
     $areas = json_decode($area_res, true)['areas'] ?? [];
 
-    // Fallback: If no areas found, maybe AI spelling was slightly off? 
-    // Optimization: We could ask AI to correct spelling if 0 areas, but let's trust default 'Dhaka' or error for now.
-    if (empty($areas))
-        return null;
+    // Detailed Debugging Exception
+    if (empty($areas)) {
+        // Check if token was valid?
+        $res_debug = json_decode($area_res, true);
+        $msg = "No Redx areas found for district: '$district_name'. ";
+        if (isset($res_debug['code']))
+            $msg .= "API Code: " . $res_debug['code'];
+        throw new Exception($msg);
+    }
 
     // 3. AI Match
     // Simplify area list to save tokens
