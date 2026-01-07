@@ -184,6 +184,34 @@ switch ($action) {
 
         json_response(['success' => true, 'message' => 'Parser settings saved.']);
         break;
+
+    case 'check_duplicate_phones':
+        $phones = $input['phones'] ?? [];
+        if (empty($phones) || !is_array($phones)) {
+            json_response([]);
+        }
+        // Normalize phone numbers
+        $normalized = array_map(function ($p) {
+            $p = preg_replace('/[\\s-]/', '', $p);
+            if (str_starts_with($p, '+88'))
+                $p = substr($p, 3);
+            elseif (str_starts_with($p, '88'))
+                $p = substr($p, 2);
+            return $p;
+        }, $phones);
+
+        $placeholders = implode(',', array_fill(0, count($normalized), '?'));
+        $stmt = $pdo->prepare("SELECT phone, customer_name, courier_type, order_id, tracking_id, created_at FROM successful_orders WHERE user_id = ? AND phone IN ($placeholders) ORDER BY created_at DESC");
+        $stmt->execute(array_merge([$user_id], $normalized));
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Group by phone number
+        $duplicates = [];
+        foreach ($results as $row) {
+            $duplicates[$row['phone']] = $row; // Keep most recent
+        }
+        json_response($duplicates);
+        break;
 }
 
 // --- Function Implementations ---
@@ -929,7 +957,21 @@ function update_profile($user_id, $input, $pdo)
 
 function create_order($user_id, $input, $pdo)
 {
-
+    // --- AUTO-MIGRATE: Create successful_orders table for duplicate detection ---
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS successful_orders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            phone VARCHAR(20) NOT NULL,
+            customer_name VARCHAR(255),
+            courier_type VARCHAR(50) NOT NULL,
+            order_id VARCHAR(100),
+            tracking_id VARCHAR(100),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_phone (user_id, phone)
+        )");
+    } catch (Exception $e) { /* Ignore if exists */
+    }
 
 
     // --- START: ORDER LIMIT VALIDATION ---
@@ -1193,6 +1235,36 @@ function create_order($user_id, $input, $pdo)
         // Save to history on success
         $stmt_save = $pdo->prepare("INSERT INTO orders (user_id, store_id, request_payload, api_response) VALUES (?, ?, ?, ?)");
         $stmt_save->execute([$user_id, $store_id, json_encode($final_payload), json_encode($final_response)]);
+
+        // --- START: SAVE SUCCESSFUL ORDERS FOR DUPLICATE DETECTION ---
+        $stmt_log = $pdo->prepare("INSERT INTO successful_orders (user_id, phone, customer_name, courier_type, order_id, tracking_id) VALUES (?, ?, ?, ?, ?, ?)");
+
+        if ($courier_type === 'steadfast') {
+            // Handle both single and bulk responses
+            $data_arr = isset($final_response['data']) && is_array($final_response['data'])
+                ? $final_response['data']
+                : (isset($final_response['consignment']) ? [$final_response['consignment']] : []);
+            foreach ($data_arr as $item) {
+                if (!empty($item['recipient_phone']) && !empty($item['consignment_id'])) {
+                    $stmt_log->execute([$user_id, $item['recipient_phone'], $item['recipient_name'] ?? '', $courier_type, $item['invoice'] ?? '', $item['tracking_code'] ?? $item['consignment_id']]);
+                }
+            }
+        } elseif ($courier_type === 'pathao') {
+            // Handle single Pathao response
+            if (isset($final_response['data']['consignment_id'])) {
+                $order_data = $orders[0];
+                $stmt_log->execute([$user_id, $order_data['phone'], $order_data['customerName'], $courier_type, $final_response['data']['merchant_order_id'] ?? '', $final_response['data']['consignment_id']]);
+            }
+        } elseif ($courier_type === 'redx' && isset($final_response['results'])) {
+            // Handle Redx bg_process results
+            foreach ($final_response['results'] as $idx => $result) {
+                if ($result['status'] >= 200 && $result['status'] < 300 && isset($result['response']['tracking_id'])) {
+                    $order_data = $orders[$idx] ?? [];
+                    $stmt_log->execute([$user_id, $order_data['phone'] ?? '', $order_data['customerName'] ?? '', $courier_type, $result['order_id'] ?? '', $result['response']['tracking_id']]);
+                }
+            }
+        }
+        // --- END: SAVE SUCCESSFUL ORDERS FOR DUPLICATE DETECTION ---
 
         // --- START: INCREMENT ORDER COUNTERS ---
         $pdo->prepare("UPDATE users SET daily_order_count = daily_order_count + ?, monthly_order_count = monthly_order_count + ? WHERE id = ?")

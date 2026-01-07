@@ -6,6 +6,7 @@ let currentUser = null;
 let userPermissions = {};
 let currentParserFields = [];
 let helpContent = '';
+let duplicatePhoneData = {}; // Stores duplicate order info keyed by phone
 const DEFAULT_PARSER_FIELDS = [
     { id: 'customerName', label: 'Customer Name', required: true },
     { id: 'phone', label: 'Phone', required: true },
@@ -294,6 +295,16 @@ function createParcelCard(parcelData) {
     const correctAddressDisabled = !userPermissions.can_correct_address;
     const correctAddressTitle = !userPermissions.can_correct_address ? 'This is a premium feature.' : 'Correct Address with AI';
 
+    // Check for duplicate order
+    const duplicateInfo = duplicatePhoneData[phone];
+    const duplicateBadgeHtml = duplicateInfo ? `
+        <div class="duplicate-warning-badge" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 8px; margin-top: 8px; font-size: 12px;">
+            <strong style="color: #856404;">⚠️ DUPLICATE ORDER</strong><br>
+            <span style="color: #664d03;">Previous: ${duplicateInfo.courier_type.toUpperCase()} | Tracking: ${duplicateInfo.tracking_id || 'N/A'}</span><br>
+            <span style="color: #664d03;">Order ID: ${duplicateInfo.order_id || 'N/A'} | Date: ${new Date(duplicateInfo.created_at).toLocaleDateString('en-GB')}</span>
+        </div>
+    ` : '';
+
     card.html(`
         <div class="details">
             <strong>${customerName}</strong> (${phone})<br>
@@ -302,6 +313,7 @@ function createParcelCard(parcelData) {
             <div style="margin-top: 5px;">
                 <input type="text" class="input-note" value="${note !== 'N/A' ? note : ''}" placeholder="Add Note..." style="width: 100%; border: 1px solid #ddd; padding: 4px; font-size: 12px; border-radius: 4px;">
             </div>
+            ${duplicateBadgeHtml}
         </div>
         <div class="parcel-actions">
             <button class="check-risk-btn" data-phone="${phoneForCheck}" ${checkRiskDisabled ? 'disabled' : ''} title="${checkRiskTitle}">Check Risk</button>
@@ -868,7 +880,7 @@ document.getElementById('smartParseToggle').addEventListener('change', async fun
     await saveParserSettings();
 });
 
-parseLocallyBtn.addEventListener('click', () => {
+parseLocallyBtn.addEventListener('click', async () => {
     const rawText = rawTextInput.value.trim();
     if (!rawText) return alert("Please paste parsable text."); // Simple alert since we don't have authMessage
 
@@ -876,6 +888,7 @@ parseLocallyBtn.addEventListener('click', () => {
     if (parcelBlocks.length === 0) return alert("No valid parcels found.");
 
     parsedDataContainer.innerHTML = '';
+    duplicatePhoneData = {}; // Reset on new parse
     let allParsedData = [];
     const useAutoParsing = document.getElementById('smartParseToggle').checked;
 
@@ -902,6 +915,9 @@ parseLocallyBtn.addEventListener('click', () => {
     });
     updateSummary();
     apiCall('save_parse', { method: useAutoParsing ? 'Auto-Local' : 'Local-Settings', data: allParsedData });
+
+    // Check for duplicates after rendering
+    await checkAndMarkDuplicates();
 });
 
 parseWithAIBtn.addEventListener('click', async () => {
@@ -910,12 +926,16 @@ parseWithAIBtn.addEventListener('click', async () => {
     loader.style.display = 'block';
     $('.parsing-buttons button').prop('disabled', true);
     parsedDataContainer.innerHTML = '';
+    duplicatePhoneData = {}; // Reset on new parse
     try {
         const results = await apiCall('parse_with_ai', { rawText });
         console.log("AI Parse Results:", results); // Debugging
         if (results && results.parses && results.parses.length > 0) {
             results.parses.forEach(p => createParcelCard(p)); // AI returns updated keys, createParcelCard handles them
             updateSummary();
+
+            // Check for duplicates after rendering
+            await checkAndMarkDuplicates();
 
             // Auto-Apply Custom Note if enabled
             if ($('#autoApplyNote').is(':checked')) {
@@ -930,6 +950,35 @@ parseWithAIBtn.addEventListener('click', async () => {
         $('.parsing-buttons button').prop('disabled', false);
     }
 });
+
+// Check for duplicate phone numbers and mark parcel cards
+async function checkAndMarkDuplicates() {
+    const phones = [];
+    $('.parcel-card').each(function () {
+        const data = JSON.parse($(this).attr('data-order-data'));
+        if (data.recipient_phone && data.recipient_phone !== 'N/A') {
+            phones.push(data.recipient_phone);
+        }
+    });
+
+    if (phones.length === 0) return;
+
+    try {
+        duplicatePhoneData = await apiCall('check_duplicate_phones', { phones });
+        // Re-render cards if duplicates found
+        if (Object.keys(duplicatePhoneData).length > 0) {
+            const allData = [];
+            $('.parcel-card').each(function () {
+                allData.push(JSON.parse($(this).attr('data-order-data')));
+            });
+            parsedDataContainer.innerHTML = '';
+            allData.forEach(p => createParcelCard(p));
+            updateSummary();
+        }
+    } catch (e) {
+        console.error("Duplicate check failed:", e);
+    }
+}
 
 // Create Order
 createOrderBtn.addEventListener('click', async () => {
