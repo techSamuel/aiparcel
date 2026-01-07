@@ -758,9 +758,11 @@ You are an expert parcel data extractor.
 7. **note** (Optional): Instructions.
 
 **Critical Rules:**
-1. **Mandatory Fields:** If a block lacks a Phone, Address, OR Price, try your best to infer them from context.
-2. **One Block = One Parcel:** Do not split a block separated by empty lines into multiple parcels.
-3. **Clustering:** If empty lines are missing, use the "Mandatory Fields" (Phone/Address/Price) to identify where one parcel ends and the next begins.
+1. **STRICT BLOCK ISOLATION:** Process each block completely independently. DO NOT look at other blocks for missing data. If a block is missing an Order ID, DO NOT copy it from the previous or next block.
+2. **Mandatory Fields:** If a block lacks a Phone, Address, OR Price, try your best to infer them from context within THAT BLOCK ONLY.
+3. **One Block = One Parcel:** Do not split a block separated by empty lines into multiple parcels.
+4. **Missing Order ID:** If `order_id` is NOT found in the block, generate a random 6-digit number (e.g., "938472") and use that. DO NOT return null for order_id.
+5. **Clustering:** If empty lines are missing, use the "Mandatory Fields" (Phone/Address/Price) to identify where one parcel ends and the next begins.
 
 **Examples:**
 
@@ -771,7 +773,8 @@ Cox's Bazar Moheshkhali.
 Size 2 pcs
 
 **Output:**
-[{"recipient_phone": "01344980362", "recipient_address": "Moheshkhali, Cox's Bazar", "cod_amount": 370, "item_description": "Size 2 pcs", "recipient_name": null, "order_id": null, "note": null}]
+**Output:**
+[{"recipient_phone": "01344980362", "recipient_address": "Moheshkhali, Cox's Bazar", "cod_amount": 370, "item_description": "Size 2 pcs", "recipient_name": null, "order_id": "482910", "note": null}]
 
 **Input text to process:**
 ---
