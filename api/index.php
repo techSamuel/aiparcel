@@ -2332,7 +2332,9 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
     $district_name = 'Dhaka'; // Default
     $json = json_decode($res, true);
     if (isset($json['candidates'][0]['content']['parts'][0]['text'])) {
-        $extracted = json_decode($json['candidates'][0]['content']['parts'][0]['text'], true);
+        $raw = $json['candidates'][0]['content']['parts'][0]['text'];
+        $clean = str_replace(['```json', '```'], '', $raw);
+        $extracted = json_decode($clean, true);
         if (!empty($extracted['district']))
             $district_name = $extracted['district'];
     }
@@ -2367,8 +2369,22 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
 
     $match_json = json_decode($match_res, true);
     if (isset($match_json['candidates'][0]['content']['parts'][0]['text'])) {
-        $matched = json_decode($match_json['candidates'][0]['content']['parts'][0]['text'], true);
-        return $matched['id'] ?? null;
+        $raw_match = $match_json['candidates'][0]['content']['parts'][0]['text'];
+        $clean_match = str_replace(['```json', '```'], '', $raw_match);
+        $matched = json_decode($clean_match, true);
+
+        $matched_id = $matched['id'] ?? null;
+        $matched_name = 'Unknown';
+
+        if ($matched_id) {
+            foreach ($areas as $area) {
+                if ($area['id'] == $matched_id) {
+                    $matched_name = $area['name'];
+                    break;
+                }
+            }
+            return ['id' => $matched_id, 'name' => $matched_name];
+        }
     }
     return null;
 }
