@@ -1759,7 +1759,14 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
 
         if (function_exists($functionName)) {
             try {
+                // Use output buffering to capture any stray PHP warnings/errors
+                ob_start();
                 $data = @$functionName($phone); // Suppress warnings
+                $strayOutput = ob_get_clean();
+
+                if (!empty($strayOutput)) {
+                    error_log("Server {$server['url']} produced stray output: " . substr($strayOutput, 0, 200));
+                }
 
                 // Validate the response is a valid array with courier data
                 if (!is_array($data)) {
