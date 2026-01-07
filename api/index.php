@@ -2324,13 +2324,13 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
     $cacheFile = __DIR__ . '/cache/redx_areas.json';
     $areas = [];
 
-    // 1. Load or Fetch Full Area List
-    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 86400 * 7)) { // Cache for 7 days
+    // 1. Load or Fetch Full Area List (Keep existing Cache Logic)
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 86400 * 7)) {
         $areas = json_decode(file_get_contents($cacheFile), true);
     } else {
         $ch = curl_init("https://openapi.redx.com.bd/v1.0.0-beta/areas");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Robustness for local dev
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['API-ACCESS-TOKEN: Bearer ' . $redx_access_token]);
         $res = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -2347,56 +2347,62 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
         }
     }
 
-    if (empty($areas)) {
-        throw new Exception("Redx Area List could not be loaded. Please check API connection.");
+    if (empty($areas))
+        throw new Exception("Redx Area List could not be loaded.");
+
+    // 2. AI Step 1: Extract District Name
+    // We explicitly ask for standard English spelling to match the Redx database key 'district_name'.
+    $prompt_district = "Analyze this address: '$address'. Extract the 'District Name' of Bangladesh in standard English Spelling (e.g. 'Dhaka', 'Narsingdi', 'Comilla', 'Chattogram'). Return JSON: {\"district\": \"DistrictName\"}";
+
+    $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
+    $api_body = ['contents' => [['parts' => [['text' => $prompt_district]]]], 'generationConfig' => ['responseMimeType' => 'application/json']];
+
+    $ch = curl_init($api_url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($api_body));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    $res = curl_exec($ch);
+    curl_close($ch);
+
+    $district_name = 'Dhaka'; // Safe default? Maybe not.
+    $json = json_decode($res, true);
+    if (isset($json['candidates'][0]['content']['parts'][0]['text'])) {
+        $raw = $json['candidates'][0]['content']['parts'][0]['text'];
+        $clean = str_replace(['```json', '```'], '', $raw);
+        $extracted = json_decode($clean, true);
+        if (!empty($extracted['district']))
+            $district_name = trim($extracted['district']);
     }
 
-    // 2. Local Fuzzy Search (Filter down to ~30 candidates)
-    // AI is too expensive for 13,000 items. We do a keyword match.
-    $addressTokens = array_filter(explode(' ', str_replace([',', '.', '-'], ' ', strtolower($address))));
-    $candidates = [];
+    // 3. Local Filter: Filter Cached List by Extracted District
+    $candidates = array_filter($areas, function ($area) use ($district_name) {
+        // Precise case-insensitive match for District
+        // We trim both just in case
+        return strcasecmp(trim($area['district_name']), $district_name) === 0;
+    });
 
-    foreach ($areas as $area) {
-        $score = 0;
-        $searchString = strtolower($area['name'] . ' ' . $area['zone_name'] . ' ' . $area['district_name']);
-
-        foreach ($addressTokens as $token) {
-            if (mb_strlen($token) < 3)
-                continue; // Skip small words
-            if (strpos($searchString, $token) !== false) {
-                $score += 1;
-            }
-        }
-
-        if ($score > 0) {
-            $area['score'] = $score;
-            $candidates[] = $area;
-        }
+    // Fallback: If strict match fails, try fuzzy match on district name (e.g. Comilla vs Cumilla)
+    if (empty($candidates)) {
+        $candidates = array_filter($areas, function ($area) use ($district_name) {
+            return stripos($area['district_name'], $district_name) !== false
+                || stripos($district_name, $area['district_name']) !== false;
+        });
     }
 
-    // Sort by score DESC
-    usort($candidates, fn($a, $b) => $b['score'] <=> $a['score']);
-    $topCandidates = array_slice($candidates, 0, 30);
-
-    // Optimized Fallback: If no keyword matches (maybe totally different script?), take generic popular areas or fail?
-    // Let's rely on AI to figure it out from the top 30 matching the district/area parts.
-    if (empty($topCandidates)) {
-        // Fallback: If absolutely no textual match, maybe partial match or just first few?
-        // Risky to return nothing. Let's return a "No Match" exception if candidates are empty.
-        throw new Exception("No Redx areas matched the address keywords locally.");
+    if (empty($candidates)) {
+        throw new Exception("No Redx areas found locally for district: '$district_name'. (AI extracted: $district_name)");
     }
 
-    // 3. AI Selection from Candidates
+    // 4. AI Step 2: Match Address against Candidates
     $simple_areas = array_map(fn($a) => [
         'id' => $a['id'],
-        'area' => $a['name'],
-        'district' => $a['district_name'],
+        'name' => $a['name'],
         'post_code' => $a['post_code']
-    ], $topCandidates);
+    ], array_slice($candidates, 0, 50)); // Limit to 50 just to be safe on tokens, though district usually has < 50 areas
 
     $prompt_match = "Address: '$address'.\nSelect the exact matching Area from this list: " . json_encode($simple_areas) . ".\nReturn JSON: {\"id\": <numeric_id>, \"name\": \"<area_name>\"}";
 
-    $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
     $ch = curl_init($api_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -2414,10 +2420,10 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
             return ['id' => $match_data['id'], 'name' => $match_data['name'] ?? "Area " . $match_data['id']];
     }
 
-    // Fallback if AI fails to match precise ID but returned areas existed
-    // Use the first candidate as best guess
-    if (!empty($topCandidates[0])) {
-        return ['id' => $topCandidates[0]['id'], 'name' => $topCandidates[0]['name']];
+    // Fallback: Use the first candidate from the district
+    $first = reset($candidates);
+    if ($first) {
+        return ['id' => $first['id'], 'name' => $first['name']];
     }
 
     throw new Exception("Could not resolve Area ID with AI.");
