@@ -2055,8 +2055,8 @@ function tryFraudCheckBDCommerce($phone)
     // Based on limited view, likely divs with flex/grid or table rows
     // Let's look for known courier names and traverse relative to them
     // Find all data rows. They seem to use border-b class for separation
-    // The header also has border-b in some structures, but we can filter by looking for valid courier images
-    $rows = $xpath->query("//div[contains(@class, 'border-b')]");
+    // Added 'justify-between' to avoid matching parent containers or footers
+    $rows = $xpath->query("//div[contains(@class, 'border-b') and contains(@class, 'justify-between')]");
 
     $courier_data = [];
 
@@ -2088,21 +2088,22 @@ function tryFraudCheckBDCommerce($phone)
             continue; // Skip unknown rows
 
         // 2. Extract Stats based on classes
-        // Total is usually in a text-center span without danger/secondary colors
-        // Cancelled is in 'text-danger'
-        // Delivered is in 'text-secondary'
-
         $totalNode = $xpath->query(".//span[contains(@class, 'text-center')]", $row)->item(0);
         $cancelledNode = $xpath->query(".//span[contains(@class, 'text-danger')]", $row)->item(0);
         $deliveredNode = $xpath->query(".//span[contains(@class, 'text-secondary')]", $row)->item(0);
 
-        $orders = $totalNode ? (int) $totalNode->textContent : 0;
-        $cancelled = $cancelledNode ? (int) $cancelledNode->textContent : 0;
-        $delivered = $deliveredNode ? (int) $deliveredNode->textContent : 0;
+        // Sanitize and Validate Inputs
+        $rawOrders = $totalNode ? trim($totalNode->textContent) : '0';
+        $rawCancelled = $cancelledNode ? trim($cancelledNode->textContent) : '0';
+        $rawDelivered = $deliveredNode ? trim($deliveredNode->textContent) : '0';
 
-        // Validation: If Total < Delivered + Cancelled, trust the sum? 
-        // Or usually the 'Total' column is reliable.
-        // In the HTML we saw: Total 16, Failed 12, Success 4. 12+4=16. Matches.
+        // Filter out phone numbers/TINs (e.g. if length > 5, it's garbage)
+        if (strlen($rawOrders) > 5 || strlen($rawCancelled) > 5)
+            continue;
+
+        $orders = (int) $rawOrders;
+        $cancelled = (int) $rawCancelled;
+        $delivered = (int) $rawDelivered;
 
         if ($orders > 0 || $delivered > 0 || $cancelled > 0) {
             $courier_data[] = [
