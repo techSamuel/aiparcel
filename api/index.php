@@ -1735,20 +1735,7 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
     }
     usort($results, fn($a, $b) => $a['latency'] <=> $b['latency']);
 
-    // Helper function to check if result looks suspicious (all 0% success)
-    function isSuspiciousResult($data)
-    {
-        if (!is_array($data) || empty($data))
-            return true;
-        foreach ($data as $courier) {
-            // If any courier has delivered > 0, it's not suspicious
-            $delivered = is_numeric($courier['delivered']) ? (int) $courier['delivered'] : 0;
-            if ($delivered > 0)
-                return false;
-        }
-        // All couriers have 0 delivered - this is suspicious
-        return true;
-    }
+
 
     // Try each server in order until one succeeds with trustworthy data
     $lastError = 'All fraud check servers failed.';
@@ -2127,6 +2114,29 @@ function tryFraudCheckBDCommerce($phone)
 }
 
 
+
+
+/**
+ * Helper function to check if result looks suspicious (all 0% success).
+ * If a server returns data where NO courier shows any delivery success, it might be a false negative or bad data.
+ * We treat this as 'suspicious' to trigger a retry on another server.
+ */
+function isSuspiciousResult($data)
+{
+    if (!is_array($data) || empty($data)) {
+        return true;
+    }
+
+    foreach ($data as $courier) {
+        // If any courier has delivered > 0, it's trustworthy
+        $delivered = is_numeric($courier['delivered']) ? (int) $courier['delivered'] : 0;
+        if ($delivered > 0) {
+            return false;
+        }
+    }
+    // All couriers have 0 delivered - suspicious
+    return true;
+}
 
 
 /**
