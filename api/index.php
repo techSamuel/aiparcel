@@ -1,7 +1,4 @@
 <?php
-// Start global output buffering to capture any stray PHP output
-ob_start();
-
 // Set session cookie parameters specifically to root path
 session_set_cookie_params(0, '/');
 session_start();
