@@ -704,7 +704,7 @@ function injectModalContent() {
     $('#profile-modal').html(`<div class="modal-content"><div class="modal-header"><h2>Profile Settings</h2><span class="close-btn">&times;</span></div><div class="profile-form"><h3>Update Your Profile</h3><div class="form-group" style="gap:5px;"><label>Display Name</label><input type="text" id="updateNameInput" placeholder="Enter your name"><button id="updateNameBtn">Update Name</button></div><hr style="margin: 20px 0;"><div class="form-group" style="gap:5px;"><label>New Password</label><input type="password" id="updatePasswordInput" placeholder="Enter a new password"><button id="updatePasswordBtn">Update Password</button></div></div><div id="profile-message" class="message" style="display:none;"></div></div>`);
 
     $('.modal .close-btn').on('click', function () { $(this).closest('.modal').hide(); });
-    $('.modal').on('click', function (e) { if (e.target === this) $(this).hide(); });
+    // $('.modal').on('click', function (e) { if (e.target === this) $(this).hide(); });
 }
 injectModalContent();
 
