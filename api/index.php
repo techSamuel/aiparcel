@@ -1108,21 +1108,19 @@ function create_order($user_id, $input, $pdo)
 
             foreach ($orders as $order) {
                 try {
-                    // 1. Resolve Area ID
-                    $area_id = matchRedxAreaWithAI($order['address'], $gemini_key, $access_token);
-                    if (!$area_id)
+                    // 1. Resolve Area ID & Name
+                    $area_data = matchRedxAreaWithAI($order['address'], $gemini_key, $access_token);
+                    if (!$area_data || !isset($area_data['id']))
                         throw new Exception("Could not resolve Area ID for address: " . $order['address']);
+
+                    $area_id = $area_data['id'];
+                    $area_name = $area_data['name'];
 
                     // 2. Prepare Payload
                     $payload = [
                         'customer_name' => $order['customerName'],
                         'customer_phone' => $order['phone'],
-                        'delivery_area' => 'Unknown', // Required string, but ID drives logic usually? API doc says 'delivery_area' string required. We might need name from AI matching but we only got ID. 
-                        // Wait, user sample says "delivery_area": "string". 
-                        // I should've returned name too.
-                        // Hack: Send "Area ID $area_id" or simple "Dhaka" if generic?
-                        // Let's assume Redx needs ID mostly. I'll put "Unknown" or update helper to return name too.
-                        // Re-reading user sample: "delivery_area_id": integer.
+                        'delivery_area' => $area_name,
                         'delivery_area_id' => (int) $area_id,
                         'customer_address' => $order['address'],
                         'merchant_invoice_id' => $order['orderId'] ?? "CX-" . uniqid(),
@@ -1138,10 +1136,6 @@ function create_order($user_id, $input, $pdo)
                             ]
                         ]
                     ];
-                    // Correction: User sample has 'delivery_area' string. 
-                    // I will fetch the area name in helper or just send 'BD'. 
-                    // Let's assume 'delivery_area' is less critical if ID is present or send a dummy.
-                    $payload['delivery_area'] = "Area $area_id";
 
                     $ch = curl_init("$REDX_BASE_URL/parcel");
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
