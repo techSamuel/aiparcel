@@ -2352,7 +2352,8 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
 
     // 2. AI Step 1: Extract District Name
     // We explicitly ask for standard English spelling to match the Redx database key 'district_name'.
-    $prompt_district = "Analyze this address: '$address'. Extract the 'District Name' of Bangladesh in standard English Spelling (e.g. 'Dhaka', 'Narsingdi', 'Comilla', 'Chattogram'). Return JSON: {\"district\": \"DistrictName\"}";
+    // Redx uses legacy spellings: Chittagong (not Chattogram), Comilla (not Cumilla), Barisal (not Barishal), Jesseore (not Jashore).
+    $prompt_district = "Analyze this address: '$address'. Extract the 'District Name' of Bangladesh in standard English Spelling. IMPORTANT: Use legacy spellings to match API: Use 'Chittagong' (NOT Chattogram), 'Comilla' (NOT Cumilla), 'Barisal' (NOT Barishal), 'Jessore' (NOT Jashore), 'Bogra' (NOT Bogura). Return JSON: {\"district\": \"DistrictName\"}";
 
     $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
     $api_body = ['contents' => [['parts' => [['text' => $prompt_district]]]], 'generationConfig' => ['responseMimeType' => 'application/json']];
