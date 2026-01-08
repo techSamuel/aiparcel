@@ -21,7 +21,7 @@ if (in_array($action, ['register', 'login', 'logout', 'check_session', 'resend_v
 $user_id = $_SESSION['user_id'] ?? null;
 if (!$user_id) {
     // This is a whitelist of actions that DO NOT require a logged-in user.
-    $public_actions = ['register', 'login', 'check_session', 'resend_verification', 'verify_code', 'load_user_data', 'request_password_reset', 'perform_password_reset'];
+    $public_actions = ['register', 'login', 'check_session', 'resend_verification', 'verify_code', 'load_user_data', 'request_password_reset', 'perform_password_reset', 'track_visitor'];
 
     if (!in_array($action, $public_actions)) {
         // If the action is not in our public whitelist, block it.
@@ -31,6 +31,9 @@ if (!$user_id) {
 }
 
 switch ($action) {
+    case 'track_visitor':
+        track_visitor($user_id, $input, $pdo);
+        break;
     case 'add_or_update_store':
         add_or_update_store($user_id, $input, $pdo);
         break;
@@ -2806,4 +2809,74 @@ function matchRedxAreaWithAI($address, $gemini_api_key, $redx_access_token)
     }
 
     throw new Exception("Could not resolve Area ID with AI.");
+}
+
+// --- VISITOR TRACKING ---
+function track_visitor($user_id, $input, $pdo)
+{
+    // Auto-migrate: Create visitors table if not exists
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS visitors (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            ip_address VARCHAR(45),
+            location VARCHAR(255),
+            user_agent TEXT,
+            start_time DATETIME,
+            duration_millis INT DEFAULT 0,
+            visit_count INT DEFAULT 1,
+            user_id INT DEFAULT NULL,
+            email VARCHAR(255) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_ip_ua (ip_address, user_agent(100))
+        )");
+    } catch (Exception $e) { /* Ignore if exists */
+    }
+
+    $ip = $input['ip'] ?? $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+    $location = $input['location'] ?? 'Unknown';
+    $user_agent = $input['userAgent'] ?? $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+    $duration = (int) ($input['durationMillis'] ?? 0);
+
+    // Check if visitor exists (by IP + User Agent)
+    $stmt = $pdo->prepare("SELECT id, visit_count FROM visitors WHERE ip_address = ? AND user_agent = ? LIMIT 1");
+    $stmt->execute([$ip, $user_agent]);
+    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($existing) {
+        // Update existing visitor
+        $new_count = $existing['visit_count'] + 1;
+        $update_stmt = $pdo->prepare("UPDATE visitors SET 
+            start_time = NOW(), 
+            duration_millis = ?,
+            visit_count = ?,
+            user_id = COALESCE(?, user_id),
+            email = COALESCE(?, email),
+            location = ?
+            WHERE id = ?");
+
+        // Get email if user is logged in
+        $email = null;
+        if ($user_id) {
+            $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+            $email_stmt->execute([$user_id]);
+            $email = $email_stmt->fetchColumn();
+        }
+
+        $update_stmt->execute([$duration, $new_count, $user_id, $email, $location, $existing['id']]);
+        json_response(['success' => true, 'visitorId' => $existing['id'], 'isNew' => false]);
+    } else {
+        // Create new visitor
+        $email = null;
+        if ($user_id) {
+            $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+            $email_stmt->execute([$user_id]);
+            $email = $email_stmt->fetchColumn();
+        }
+
+        $insert_stmt = $pdo->prepare("INSERT INTO visitors (ip_address, location, user_agent, start_time, duration_millis, user_id, email) VALUES (?, ?, ?, NOW(), ?, ?, ?)");
+        $insert_stmt->execute([$ip, $location, $user_agent, $duration, $user_id, $email]);
+        $visitor_id = $pdo->lastInsertId();
+        json_response(['success' => true, 'visitorId' => $visitor_id, 'isNew' => true]);
+    }
 }

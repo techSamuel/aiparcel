@@ -306,3 +306,4 @@ if (!defined('APP_URL')) {
 
 <script src="assets/js/utils.js?v=<?php echo time(); ?>"></script>
 <script src="assets/js/dashboard.js?v=<?php echo time(); ?>"></script>
+<script src="assets/js/visitor-tracker.js?v=<?php echo time(); ?>"></script>

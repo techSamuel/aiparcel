@@ -32,6 +32,9 @@ switch ($action) {
     case 'get_stats':
         handle_get_stats();
         break;
+    case 'get_visitors':
+        handle_get_visitors();
+        break;
     case 'list_users':
         handle_list_users();
         break;
@@ -765,4 +768,19 @@ function handle_manual_adjust_user()
 
     $pdo->prepare($sql)->execute($params);
     json_response(['success' => true]);
+}
+
+function handle_get_visitors()
+{
+    global $pdo;
+
+    // Check if table exists first
+    try {
+        $stmt = $pdo->query("SELECT * FROM visitors ORDER BY updated_at DESC LIMIT 500");
+        $visitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        json_response($visitors);
+    } catch (Exception $e) {
+        // Table doesn't exist yet
+        json_response([]);
+    }
 }
