@@ -27,4 +27,6 @@ temp/
 node_modules/
 
 # Composer vendor (if any)
-vendor/
+
+# Config
+api/config.php
