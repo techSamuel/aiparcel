@@ -1202,10 +1202,19 @@ parseWithAIBtn.addEventListener('click', async () => {
         } else {
             alert('AI could not parse the text.');
         }
-    } catch (e) { alert(e.message); }
-    finally {
+    } catch (e) {
+        alert(e.message || "An error occurred during AI parsing.");
+        // If error, clear the progress UI so user can try again
+        parsedDataContainer.innerHTML = '';
+    } finally {
+        clearInterval(timerInterval); // ALWAYS stop the timer
         loader.style.display = 'none';
         $('.parsing-buttons button').prop('disabled', false);
+
+        // Final sanity check: if container still has progress bar but no data, clear it
+        if (parsedDataContainer.innerHTML.includes('parsing-progress')) {
+            parsedDataContainer.innerHTML = '';
+        }
     }
 });
 
