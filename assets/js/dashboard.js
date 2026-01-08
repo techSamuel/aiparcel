@@ -45,18 +45,30 @@ const planStatusView = document.getElementById('plan-status-view');
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
+    // Prevent infinite reload loop
+    const reloadCount = parseInt(sessionStorage.getItem('reloadCount') || '0');
+    if (reloadCount > 2) {
+        console.error('Too many reloads detected. Stopping to prevent infinite loop.');
+        sessionStorage.removeItem('reloadCount');
+        document.body.innerHTML = '<div style="padding:20px; text-align:center;"><h2>Error Loading Dashboard</h2><p>Please clear your browser cache and try again, or contact support.</p><button onclick="sessionStorage.clear(); location.reload();">Retry</button></div>';
+        return;
+    }
+
     try {
         const session = await apiCall('check_session');
         if (session.loggedIn && session.user) {
             currentUser = session.user;
             isPremiumUser = session.user.plan_id > 1;
+            sessionStorage.removeItem('reloadCount'); // Reset on success
             await renderAppView();
         } else {
             // If PHP routing works, we shouldn't be here if not logged in, but reload just in case
+            sessionStorage.setItem('reloadCount', String(reloadCount + 1));
             window.location.reload();
         }
     } catch (e) {
         console.error('Init Error:', e);
+        sessionStorage.setItem('reloadCount', String(reloadCount + 1));
         window.location.reload();
     }
 });
