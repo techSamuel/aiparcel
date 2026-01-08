@@ -300,7 +300,8 @@ function loadUserStores() {
 function updateCreateOrderButtonText() {
     const selectedStoreId = storeSelector.value;
     if (selectedStoreId && userCourierStores[selectedStoreId]) {
-        const courierType = userCourierStores[selectedStoreId].courierType;
+        const store = userCourierStores[selectedStoreId];
+        const courierType = store.courierType || store.courier_type || 'unknown';
         // Capitalize first letter: redx -> Redx
         createOrderBtn.textContent = `Create ${courierType.charAt(0).toUpperCase() + courierType.slice(1)} Order(s)`;
     } else {
