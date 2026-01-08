@@ -70,6 +70,7 @@ switch ($action) {
         //check_fraud_risk($user_id, $input, $pdo);
         break;
     // --- NEW SUBSCRIPTION ENDPOINTS ---
+    case 'load_user_data': // Usage: Dashboard (Aliases get_subscription_data)
     case 'get_subscription_data':
         // AUTO-MIGRATE: Ensure extra limit columns exist to prevent SQL errors
         try {
