@@ -144,16 +144,26 @@ switch ($action) {
             }
             $data['stores'] = $stores_obj;
 
-            // Fetch parser settings
-            $stmt_settings = $pdo->prepare("SELECT parser_settings, last_selected_store_id FROM users WHERE id = ?");
-            $stmt_settings->execute([$user_id]);
-            $user_settings = $stmt_settings->fetch(PDO::FETCH_ASSOC);
-            $data['parserSettings'] = json_decode($user_settings['parser_settings'] ?? '[]', true);
-            $data['lastSelectedStoreId'] = $user_settings['last_selected_store_id'];
+            // Fetch parser settings (with error handling for missing columns)
+            try {
+                $stmt_settings = $pdo->prepare("SELECT parser_settings, last_selected_store_id FROM users WHERE id = ?");
+                $stmt_settings->execute([$user_id]);
+                $user_settings = $stmt_settings->fetch(PDO::FETCH_ASSOC);
+                $data['parserSettings'] = json_decode($user_settings['parser_settings'] ?? '[]', true);
+                $data['lastSelectedStoreId'] = $user_settings['last_selected_store_id'] ?? null;
+            } catch (Exception $e) {
+                // Columns might not exist - use defaults
+                $data['parserSettings'] = [];
+                $data['lastSelectedStoreId'] = null;
+            }
 
             // Fetch help content
-            $stmt_help = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'help_content'");
-            $data['helpContent'] = $stmt_help->fetchColumn() ?: '';
+            try {
+                $stmt_help = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'help_content'");
+                $data['helpContent'] = $stmt_help->fetchColumn() ?: '';
+            } catch (Exception $e) {
+                $data['helpContent'] = '';
+            }
         }
 
         json_response($data);
