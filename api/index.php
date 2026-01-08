@@ -625,6 +625,10 @@ function add_or_update_store($user_id, $input, $pdo)
  */
 function parseWithAi($user_id, $input, $pdo)
 {
+    // Increase limits for large AI processing
+    set_time_limit(300); // 5 Minutes
+    ini_set('memory_limit', '512M');
+
     // --- 1. Check premium access & limits ---
     $stmt_user_plan = $pdo->prepare("
         SELECT 
@@ -825,7 +829,7 @@ EOT;
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($api_body));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         // Timeout
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 120); // Increased to 120s
 
         $response_body = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
