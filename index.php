@@ -229,7 +229,7 @@ if ($isLoggedIn && ($page === 'auth' || $page === 'landing' || $page === '')) {
         <?php if ($whatsappNumber): ?>
             <a href="https://wa.me/<?php echo str_replace(['+', ' ', '-'], '', htmlspecialchars($whatsappNumber)); ?>"
                 target="_blank"
-                style="position:fixed; bottom:20px; left:20px; z-index:9999; background:#25D366; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
+                style="position:fixed; bottom:20px; right:20px; z-index:9999; background:#25D366; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
                 onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
                 title="Chat on WhatsApp">
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
