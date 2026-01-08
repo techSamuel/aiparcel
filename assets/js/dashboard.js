@@ -92,6 +92,23 @@ async function renderAppView() {
     userCourierStores = data.stores || {};
     geminiApiKey = data.geminiApiKey;
     aiBulkParseLimit = parseInt(data.aiBulkParseLimit) || 50; // Load limit
+
+    // Update Placeholder with Dynamic Limit & Bengali Text
+    if (rawTextInput) {
+        rawTextInput.placeholder = `AI স্মার্ট পার্সিং চালু আছে। আপনি যেকোনো ক্রমে তথ্য পেস্ট করতে পারেন।
+উদাহরণ:
+Customer Name
+01xxxxxxxxx
+Product Name
+500
+Full Address
+Note (Optional)
+
+(একাধিক পার্সেল আলাদা করতে প্রতিটি পার্সেলের মাঝে **একটি ফাঁকা লাইন (খালি লাইন)** দিন।)
+
+একসাথে সর্বোচ্চ ${aiBulkParseLimit} টি পার্সেল প্রসেস করা যাবে।`;
+    }
+
     userPermissions = data.permissions || {};
     helpContent = data.helpContent || '<p>No help guide has been set up by the administrator.</p>';
 
