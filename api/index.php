@@ -109,6 +109,10 @@ switch ($action) {
             $stmt_key = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'gemini_api_key'");
             $data['geminiApiKey'] = $stmt_key->fetchColumn();
 
+            // Fetch AI Bulk Parse Limit from Settings (Admin Config)
+            $stmt_limit = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'ai_bulk_parse_limit'");
+            $data['aiBulkParseLimit'] = $stmt_limit->fetchColumn();
+
             $data['permissions'] = [
                 'can_parse_ai' => (bool) ($data['can_parse_ai'] ?? false),
                 'can_autocomplete' => (bool) ($data['can_autocomplete'] ?? false),
