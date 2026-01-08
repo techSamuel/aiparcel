@@ -252,6 +252,9 @@ if ($isLoggedIn && ($page === 'auth' || $page === 'landing' || $page === '')) {
         </a>
     <?php endif; ?>
 
+    <!-- Visitor Tracking -->
+    <script src="assets/js/visitor-tracker.js?v=<?php echo time(); ?>"></script>
+
 </body>
 
 </html>
