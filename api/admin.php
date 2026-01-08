@@ -503,10 +503,22 @@ function handle_save_settings()
             if (!is_dir($upload_dir))
                 mkdir($upload_dir, 0755, true);
             $file_extension = pathinfo($_FILES['appLogoFile']['name'], PATHINFO_EXTENSION);
-            $new_filename = 'logo.' . $file_extension;
+            $new_filename = 'logo_' . time() . '.' . $file_extension;
             $upload_file = $upload_dir . $new_filename;
             if (move_uploaded_file($_FILES['appLogoFile']['tmp_name'], $upload_file)) {
                 $settings_to_save['app_logo_url'] = 'api/' . $upload_file;
+            }
+        }
+
+        if (isset($_FILES['seoImageFile']) && $_FILES['seoImageFile']['error'] == UPLOAD_ERR_OK) {
+            $upload_dir = 'uploads/';
+            if (!is_dir($upload_dir))
+                mkdir($upload_dir, 0755, true);
+            $file_extension = pathinfo($_FILES['seoImageFile']['name'], PATHINFO_EXTENSION);
+            $new_filename = 'og_' . time() . '.' . $file_extension;
+            $upload_file = $upload_dir . $new_filename;
+            if (move_uploaded_file($_FILES['seoImageFile']['tmp_name'], $upload_file)) {
+                $settings_to_save['seo_image_url'] = 'api/' . $upload_file;
             }
         }
 

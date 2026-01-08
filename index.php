@@ -86,8 +86,14 @@ if ($isLoggedIn && ($page === 'auth' || $page === 'landing' || $page === '')) {
     <meta property="og:type" content="website">
     <meta property="og:title" content="<?php echo $seoTitle ? htmlspecialchars($seoTitle) : $appName; ?>">
     <meta property="og:description" content="<?php echo htmlspecialchars($seoDescription); ?>">
-    <?php if ($seoImageUrl): ?>
-        <meta property="og:image" content="<?php echo htmlspecialchars($seoImageUrl); ?>">
+    <?php
+    $finalSeoImageUrl = $seoImageUrl;
+    if ($seoImageUrl && strpos($seoImageUrl, 'http') !== 0 && defined('APP_URL') && strpos($seoImageUrl, 'api/') === 0) {
+        $finalSeoImageUrl = rtrim(APP_URL, '/') . '/' . $seoImageUrl;
+    }
+    ?>
+    <?php if ($finalSeoImageUrl): ?>
+        <meta property="og:image" content="<?php echo htmlspecialchars($finalSeoImageUrl); ?>">
     <?php endif; ?>
 
     <link rel="icon" type="image/png" href="<?php echo htmlspecialchars($appLogoUrl); ?>">
@@ -196,6 +202,16 @@ if ($isLoggedIn && ($page === 'auth' || $page === 'landing' || $page === '')) {
                     </svg>
                 </a>
             <?php endif; ?>
+        <?php else: ?>
+            <!-- Fallback if Enabled but No ID: Direct Link to QuantumTechSoft -->
+            <a href="https://www.facebook.com/quantumtechsoft" target="_blank"
+                style="position:fixed; bottom:90px; left:20px; z-index:9999; background:#0084FF; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
+                onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="Message Us">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+            </a>
         <?php endif; ?>
 
         <!-- WhatsApp Floating Button -->
@@ -213,12 +229,12 @@ if ($isLoggedIn && ($page === 'auth' || $page === 'landing' || $page === '')) {
         <?php endif; ?>
     <?php else: ?>
         <!-- Hardcoded Fallback: Direct Link to QuantumTechSoft -->
-        <a href="https://www.facebook.com/quantumtechsoft" target="_blank" 
-           style="position:fixed; bottom:90px; left:20px; z-index:9999; background:#0084FF; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
-           onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
-           title="Message Us">
+        <a href="https://www.facebook.com/quantumtechsoft" target="_blank"
+            style="position:fixed; bottom:90px; left:20px; z-index:9999; background:#0084FF; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
+            onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="Message Us">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                <path
+                    d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
             </svg>
         </a>
     <?php endif; ?>

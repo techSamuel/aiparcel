@@ -65,8 +65,18 @@
                     id="seoDescription"
                     placeholder="e.g. The best tool for managing RedX, Pathao, and Steadfast parcels..."></textarea>
             </div>
-            <div class="form-group"><label for="seoImageUrl">Default OG Image URL</label><input type="text"
-                    id="seoImageUrl" placeholder="https://example.com/banner.jpg"></div>
+            <div class="form-group">
+                <label for="seoImageFile">Default OG Image (Upload/URL)</label>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="file" id="seoImageFile" accept="image/*" style="flex:1;">
+                    <div style="font-size:12px; color:#666;">OR</div>
+                    <input type="text" id="seoImageUrl" placeholder="https://example.com/banner.jpg" style="flex:1;">
+                </div>
+                <div style="margin-top:10px;">
+                    <img id="seoImagePreview" src="" alt="Preview"
+                        style="max-width: 200px; display:none; border-radius:8px; border: 1px solid #ddd;">
+                </div>
+            </div>
         </div>
 
         <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
@@ -129,9 +139,24 @@
                 $('#seoTitle').val(result.seoTitle || '');
                 $('#seoDescription').val(result.seoDescription || '');
                 $('#seoImageUrl').val(result.seoImageUrl || '');
+                if (result.seoImageUrl) {
+                    $('#seoImagePreview').attr('src', result.seoImageUrl).show();
+                }
             } catch (e) { console.error(e); }
         }
         loadSettings();
+
+        // Preview Image on Select
+        $('#seoImageFile').on('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#seoImagePreview').attr('src', e.target.result).show();
+                }
+                reader.readAsDataURL(file);
+            }
+        });
 
         $('#settings-form').on('submit', async function (e) {
             e.preventDefault();
@@ -154,6 +179,9 @@
             formData.append('seoTitle', $('#seoTitle').val());
             formData.append('seoDescription', $('#seoDescription').val());
             formData.append('seoImageUrl', $('#seoImageUrl').val());
+
+            const seoImageFile = $('#seoImageFile')[0].files[0];
+            if (seoImageFile) formData.append('seoImageFile', seoImageFile);
 
             const logoFile = $('#appLogoFile')[0].files[0];
             if (logoFile) formData.append('appLogoFile', logoFile);
