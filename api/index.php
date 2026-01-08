@@ -423,7 +423,7 @@ function handle_auth($action, $input, $pdo)
         case 'check_session':
             if (isset($_SESSION['user_id'])) {
                 // This is the crucial part: it ALWAYS queries the database for fresh data.
-                $stmt = $pdo->prepare("SELECT id, email, display_name AS displayName, is_premium FROM users WHERE id = ?");
+                $stmt = $pdo->prepare("SELECT id, email, display_name AS displayName, is_premium, plan_id FROM users WHERE id = ?");
                 $stmt->execute([$_SESSION['user_id']]);
                 $user = $stmt->fetch();
 
