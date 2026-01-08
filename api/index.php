@@ -566,6 +566,7 @@ function load_user_data($user_id, $pdo)
 
     $response += [
         'geminiApiKey' => $settings['gemini_api_key'] ?? null,
+        'aiBulkParseLimit' => $settings['ai_bulk_parse_limit'] ?? '50', // Add this
         'appName' => $settings['app_name'] ?? 'CourierPlus',
         'appLogoUrl' => $settings['app_logo_url'] ?? '',
         'ezoicPlaceholderId' => $settings['ezoic_placeholder_id'] ?? null,
@@ -800,26 +801,78 @@ EOT;
 
     // --- 5. Send request to Gemini API ---
 
-    // --- 5. Send request to Gemini API ---
-    $ch = curl_init($api_url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($api_body));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    $response_body = curl_exec($ch);
+    // --- 5. Call Gemini API with Retry Logic ---
+    $stmt_settings = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('ai_retry_count', 'admin_error_email', 'app_name')");
+    $settings_map = array_column($stmt_settings->fetchAll(), 'setting_value', 'setting_key');
+    $retry_count = isset($settings_map['ai_retry_count']) ? (int) $settings_map['ai_retry_count'] : 3;
+    $admin_email = $settings_map['admin_error_email'] ?? '';
+    $app_name = $settings_map['app_name'] ?? 'CourierPlus';
 
-    // --- 6. cURL error check ---
-    if (curl_errno($ch)) {
+    $response_body = false;
+    $http_code = 0;
+    $curl_error = '';
+
+    for ($attempt = 0; $attempt <= $retry_count; $attempt++) {
+        $ch = curl_init($api_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($api_body));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        // Timeout
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+
+        $response_body = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curl_error = curl_error($ch);
         curl_close($ch);
-        json_response(['error' => 'cURL Error: Could not connect to Gemini API.', 'details' => $curl_error], 500);
+
+        // Success condition: HTTP 200 and non-empty response
+        if ($http_code === 200 && $response_body) {
+            break; // Success! Exit loop.
+        }
+
+        // If failed, wait before retrying (exponential backoff optional, here simple 1s)
+        if ($attempt < $retry_count) {
+            sleep(1);
+        }
     }
 
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    if ($http_code !== 200 || !$response_body) {
+        // --- SEND ALERT EMAIL TO ADMIN ---
+        if (!empty($admin_email)) {
+            require_once 'src/Exception.php';
+            require_once 'src/PHPMailer.php';
+            require_once 'src/SMTP.php';
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            try {
+                $mail->isSMTP();
+                $mail->Host = SMTP_HOST;
+                $mail->SMTPAuth = true;
+                $mail->Username = SMTP_USER;
+                $mail->Password = SMTP_PASS;
+                $mail->SMTPSecure = (SMTP_SECURE === 'tls') ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+                $mail->Port = SMTP_PORT;
 
-    if ($http_code >= 400) {
-        json_response(['error' => 'The AI API returned an error.', 'details' => json_decode($response_body, true)], $http_code);
+                $mail->setFrom(SMTP_FROM_EMAIL, $app_name . ' System');
+                $mail->addAddress($admin_email);
+                $mail->isHTML(true);
+                $mail->Subject = 'URGENT: AI Parsing Failed on ' . $app_name;
+                $mail->Body = "<h3>AI Parsing Failure Alert</h3>
+                               <p><strong>Time:</strong> " . date("Y-m-d H:i:s") . "</p>
+                               <p><strong>User ID:</strong> $user_id</p>
+                               <p><strong>Retry Attempts:</strong> $attempt / $retry_count</p>
+                               <p><strong>HTTP Code:</strong> $http_code</p>
+                               <p><strong>Curl Error:</strong> $curl_error</p>
+                               <p><strong>Response:</strong> " . htmlspecialchars($response_body) . "</p>
+                               <hr>
+                               <p><strong>Input Text Snippet:</strong> " . htmlspecialchars(substr($raw_text, 0, 200)) . "...</p>";
+                $mail->send();
+            } catch (Exception $e) {
+                // Ignore mailer error to ensure JSON response is sent
+            }
+        }
+        // ---------------------------------
+        json_response(['error' => "Gemini API Error (Code: $http_code). Please try again later. $curl_error"], 500);
     }
 
     // --- 7. Parse AI response ---

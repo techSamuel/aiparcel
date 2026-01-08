@@ -12,10 +12,21 @@
         <hr style="margin: 20px 0;">
         <div class="form-group"><label for="geminiApiKey">Gemini API Key</label><textarea type="password"
                 id="geminiApiKey"></textarea></div>
-        <div class="form-group"><label for="aiBulkParseLimit">AI Bulk Parse Limit</label><input type="number"
-                id="aiBulkParseLimit" placeholder="50" min="1" max="500">
-            <small style="color: #666; font-size: 0.85em; display:block; margin-top:5px;">Maximum number of
-                customers/parcels allowed in a single "Parse with AI" request.</small>
+        <div class="form-group" style="display:flex; gap:10px;">
+            <div style="flex:1;">
+                <label for="aiBulkParseLimit">AI Bulk Parse Limit</label>
+                <input type="number" id="aiBulkParseLimit" placeholder="50" min="1" max="500">
+                <small style="color: #666; font-size: 0.85em; display:block; margin-top:5px;">Max parcels per request.</small>
+            </div>
+            <div style="flex:1;">
+                <label for="aiRetryCount">AI Retry Count</label>
+                <input type="number" id="aiRetryCount" placeholder="3" min="0" max="10">
+                <small style="color: #666; font-size: 0.85em; display:block; margin-top:5px;">Retries on failure.</small>
+            </div>
+        </div>
+        <div class="form-group"><label for="adminErrorEmail">Admin Error Email</label><input type="email"
+                id="adminErrorEmail" placeholder="admin@example.com">
+            <small style="color: #666; font-size: 0.85em;">Receive alerts if parsing fails.</small>
         </div>
         <div class="form-group"><label for="barikoiApiKey">Barikoi API Key</label><textarea type="password"
                 id="barikoiApiKey"></textarea></div>
@@ -164,7 +175,9 @@
                 $('#appName').val(result.appName || '');
                 $('#logoPreview').attr('src', result.appLogoUrl ? `../${result.appLogoUrl}` : '').toggle(!!result.appLogoUrl);
                 $('#geminiApiKey').val(result.geminiApiKey || '');
-                $('#aiBulkParseLimit').val(result.aiBulkParseLimit || '50'); // Add this
+                $('#aiBulkParseLimit').val(result.aiBulkParseLimit || '50');
+                $('#aiRetryCount').val(result.aiRetryCount || '3'); // Add this
+                $('#adminErrorEmail').val(result.adminErrorEmail || ''); // Add this
                 $('#barikoiApiKey').val(result.barikoiApiKey || '');
                 $('#googleMapsApiKey').val(result.googleMapsApiKey || ''); // Fixed duplicate
                 $('#googleClientId').val(result.googleClientId || '');
@@ -206,7 +219,9 @@
             formData.append('action', 'save_settings');
             formData.append('appName', $('#appName').val());
             formData.append('geminiApiKey', $('#geminiApiKey').val());
-            formData.append('aiBulkParseLimit', $('#aiBulkParseLimit').val()); // Add this
+            formData.append('aiBulkParseLimit', $('#aiBulkParseLimit').val());
+            formData.append('aiRetryCount', $('#aiRetryCount').val()); // Add this
+            formData.append('adminErrorEmail', $('#adminErrorEmail').val()); // Add this
             formData.append('barikoiApiKey', $('#barikoiApiKey').val());
             formData.append('googleMapsApiKey', $('#googleMapsApiKey').val());
             formData.append('googleClientId', $('#googleClientId').val());
@@ -276,7 +291,7 @@
             btn.prop('disabled', true).text('Sending...');
 
             try {
-                await apiCall('send_test_email', { email: email });
+       await apiCall('send_test_email', { email: email });
                 alert('Test email sent successfully!');
             } catch (e) {
                 alert('Failed: ' + e.message);

@@ -1,6 +1,6 @@
-// --- GLOBAL STATE & CONSTANTS ---
 let userCourierStores = {};
 let geminiApiKey = null;
+let aiBulkParseLimit = 50; // Default limit
 let isPremiumUser = false;
 let currentUser = null;
 let userPermissions = {};
@@ -67,6 +67,7 @@ async function renderAppView() {
     const data = await apiCall('load_user_data');
     userCourierStores = data.stores || {};
     geminiApiKey = data.geminiApiKey;
+    aiBulkParseLimit = parseInt(data.aiBulkParseLimit) || 50; // Load limit
     userPermissions = data.permissions || {};
     helpContent = data.helpContent || '<p>No help guide has been set up by the administrator.</p>';
 
@@ -939,6 +940,16 @@ parseLocallyBtn.addEventListener('click', async () => {
 parseWithAIBtn.addEventListener('click', async () => {
     const rawText = rawTextInput.value.trim();
     if (!rawText) return;
+
+    // --- Client-Side Validation ---
+    // Count blocks separated by empty lines (regex: /\n\s*\n/)
+    const blocks = rawText.split(/\n\s*\n/).filter(b => b.trim().length > 0);
+    if (blocks.length > aiBulkParseLimit) {
+        alert(`Input too large! You provided ~${blocks.length} parcels, but the limit is ${aiBulkParseLimit}. Please split your batch.`);
+        return;
+    }
+    // -----------------------------
+
     loader.style.display = 'block';
     $('.parsing-buttons button').prop('disabled', true);
     parsedDataContainer.innerHTML = '';

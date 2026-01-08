@@ -453,7 +453,9 @@ function handle_get_settings()
     }
     json_response([
         'geminiApiKey' => $settings['gemini_api_key'] ?? '',
-        'aiBulkParseLimit' => $settings['ai_bulk_parse_limit'] ?? '50', // Add this
+        'aiBulkParseLimit' => $settings['ai_bulk_parse_limit'] ?? '50',
+        'aiRetryCount' => $settings['ai_retry_count'] ?? '3', // Add this
+        'adminErrorEmail' => $settings['admin_error_email'] ?? '', // Add this
         'barikoiApiKey' => $settings['barikoi_api_key'] ?? '',
         'googleMapsApiKey' => $settings['google_maps_api_key'] ?? '',
         'googleClientId' => $settings['google_client_id'] ?? '',
@@ -483,7 +485,9 @@ function handle_save_settings()
         $settings_to_save = [
             'app_name' => $_POST['appName'] ?? 'CourierPlus',
             'gemini_api_key' => $_POST['geminiApiKey'] ?? '',
-            'ai_bulk_parse_limit' => $_POST['aiBulkParseLimit'] ?? '50', // Add this
+            'ai_bulk_parse_limit' => $_POST['aiBulkParseLimit'] ?? '50',
+            'ai_retry_count' => $_POST['aiRetryCount'] ?? '3', // Add this
+            'admin_error_email' => $_POST['adminErrorEmail'] ?? '', // Add this
             'barikoi_api_key' => $_POST['barikoiApiKey'] ?? '',
             'google_maps_api_key' => $_POST['googleMapsApiKey'] ?? '',
             'google_client_id' => $_POST['googleClientId'] ?? '',
