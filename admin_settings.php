@@ -52,20 +52,16 @@
             <div class="form-group"><label for="facebookPageId">Facebook Page ID (For Messenger Chat)</label><input
                     type="text" id="facebookPageId" placeholder="e.g. 104033333333333">
                 <small>Find your Page ID in Page Settings > About.</small>
-                <div class="form-group"><label for="facebookPageId">Facebook Page ID (For Messenger Chat)</label><input
-                        type="text" id="facebookPageId" placeholder="e.g. 104033333333333">
-                    <small>Find your Page ID in Page Settings > About.</small>
-                    <div style="margin-top:5px;">
-                        <label
-                            style="cursor:pointer; font-weight: normal; font-size: 13px; display:flex; align-items:center; gap: 8px;">
-                            <input type="checkbox" id="useSimpleFbBtn"> Force Simple Link (Use this if Plugin fails to
-                            load)
-                        </label>
-                    </div>
+                <div style="margin-top:5px;">
+                    <label
+                        style="cursor:pointer; font-weight: normal; font-size: 13px; display:flex; align-items:center; gap: 8px;">
+                        <input type="checkbox" id="useSimpleFbBtn"> Force Simple Link (Use this if Plugin fails to
+                        load)
+                    </label>
                 </div>
-                <div class="form-group"><label for="whatsappNumber">WhatsApp Number (For Floating Button)</label><input
-                        type="text" id="whatsappNumber" placeholder="e.g. +8801700000000"></div>
             </div>
+            <div class="form-group"><label for="whatsappNumber">WhatsApp Number (For Floating Button)</label><input
+                    type="text" id="whatsappNumber" placeholder="e.g. +8801700000000"></div>
 
             <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
                 <label>SEO Settings (Open Graph)</label>
@@ -123,6 +119,34 @@
             <input type="email" id="testEmailInput" placeholder="Enter recipient email"
                 style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
             <button type="button" id="btnSendTestEmail" class="btn-primary">Send Test Email</button>
+        </div>
+    </div>
+
+    <hr style="margin: 20px 0;">
+
+    <div style="padding-bottom: 40px;">
+        <h3>Cron Job Setup Instructions</h3>
+        <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">To automate daily maintenance (expiry checks,
+            alerts), set up a Cron Job in your hosting panel.</p>
+
+        <div style="margin-bottom:15px;">
+            <label style="font-weight:600; font-size:14px; display:block; margin-bottom:5px;">Cron URL:</label>
+            <div
+                style="background: #f8f9fa; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; word-break: break-all; user-select: all;">
+                <?php echo defined('APP_URL') ? APP_URL : 'https://courier.aiparcel.site'; ?>/api/cron.php
+            </div>
+        </div>
+
+        <div>
+            <label style="font-weight:600; font-size:14px; display:block; margin-bottom:5px;">Example Command (cPanel /
+                Hostinger):</label>
+            <div
+                style="background: #2d2d2d; color: #00ff00; padding: 10px; border-radius: 4px; font-family: monospace; word-break: break-all; user-select: all;">
+                curl -s "<?php echo defined('APP_URL') ? APP_URL : 'https://courier.aiparcel.site'; ?>/api/cron.php"
+                >/dev/null 2>&1
+            </div>
+            <p style="color:#666; font-size: 0.85em; margin-top:5px;">Set this to run <strong>Once Per Day (e.g., at
+                    00:00)</strong>.</p>
         </div>
     </div>
 </div>
