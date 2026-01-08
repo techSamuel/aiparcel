@@ -68,7 +68,7 @@
                     { data: "order_limit_monthly", visible: false },
                     { data: "order_limit_daily", visible: false },
                     { data: "ai_parsing_limit", visible: false },
-                    { data: "bulk_parse_limit", visible: false }, // Hidden col for data
+                    { data: "bulk_parse_limit", visible: false, defaultContent: "30" }, // Hidden col for data
                     { data: "validity_days", visible: false },
                     { data: "description", visible: false },
                     {
