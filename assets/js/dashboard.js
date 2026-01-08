@@ -323,20 +323,11 @@ function createParcelCard(parcelData) {
     }
 
     card.html(`
-        <div class="details" style="width: 100%;">
-            <div style="display:flex; gap:5px; margin-bottom:4px; align-items:center;">
-                <input type="text" class="edit-field" data-field="recipient_name" value="${customerName}" placeholder="Name" style="flex:1; padding:3px; border:1px solid #ddd; border-radius:3px;">
-                <input type="text" class="edit-field" data-field="recipient_phone" value="${phone}" placeholder="Phone" style="flex:1; padding:3px; border:1px solid #ddd; border-radius:3px;">
-            </div>
-            <div style="margin-bottom:4px;">
-                <textarea class="edit-field address-text" data-field="recipient_address" placeholder="Address" style="width:100%; padding:3px; border:1px solid #ddd; border-radius:3px; resize:vertical; min-height:40px;">${address}</textarea>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center; font-size: 0.9em; color: #555;">
-                <span>OID: ${orderId}</span>
-                <span style="display:flex; align-items:center; gap:3px;">
-                    | COD: <input type="number" class="edit-field" data-field="amount" value="${amount}" style="width:70px; padding:2px; border:1px solid #ddd;"> BDT
-                </span>
-                <span>| Item: ${productName}</span>
+        <div class="details">
+            <div style="font-weight:bold; margin-bottom:2px;">${customerName} <span style="font-weight:normal;">(${phone})</span></div>
+            <div style="margin-bottom:4px;">Address: <span class="address-text">${address}</span></div>
+            <div style="font-size:0.9em; color:#555;">
+                OID: ${orderId} | COD: <strong>${amount} BDT</strong> | Item: ${productName}
             </div>
             <div style="margin-top: 5px;">
                 <input type="text" class="input-note" value="${note !== 'N/A' ? note : ''}" placeholder="Add Note..." style="width: 100%; border: 1px solid #ddd; padding: 4px; font-size: 12px; border-radius: 4px;">
@@ -344,6 +335,7 @@ function createParcelCard(parcelData) {
             ${duplicateBadgeHtml}
         </div>
         <div class="parcel-actions">
+            <button class="edit-btn" title="Edit Details">Edit ✏️</button>
             <button class="check-risk-btn" data-phone="${phoneForCheck}" ${checkRiskDisabled ? 'disabled' : ''} title="${checkRiskTitle}">Check Risk</button>
             <button class="correct-address-btn" ${correctAddressDisabled ? 'disabled' : ''} title="${correctAddressTitle}">Correct Address 🤖 AI</button>
             <button class="remove-btn">&times;</button>
@@ -351,55 +343,9 @@ function createParcelCard(parcelData) {
         <div class="fraud-results-container" style="display: none;"></div>
     `);
 
-    // --- Dynamic Input Validation & Data Sync ---
-    card.find('.edit-field').on('input change', function () {
-        const field = $(this).data('field');
-        // For textarea/input, gets current value
-        let val = $(this).val();
-
-        let data = JSON.parse(card.attr('data-order-data'));
-
-        if (field === 'amount') {
-            data.cod_amount = parseFloat(val) || 0;
-            data.amount = data.cod_amount;
-        } else {
-            // If phone, we might want to normalize on the fly, but let user type freely for corrections
-            data[field] = val;
-        }
-
-        // --- Re-Validate ---
-        const pPhone = (data.recipient_phone || '').replace(/\s+/g, '');
-        const isPhoneValid = /^01[3-9]\d{8}$/.test(pPhone);
-
-        const pAddress = data.recipient_address;
-        const isAddressValid = pAddress && pAddress !== 'N/A' && pAddress !== 'null' && pAddress.length > 5;
-
-        const pAmount = parseFloat(data.amount);
-        const isPriceValid = !isNaN(pAmount) && pAmount > 0;
-
-        if (isPhoneValid && isAddressValid && isPriceValid) {
-            card.removeClass('invalid-parcel');
-        } else {
-            card.addClass('invalid-parcel');
-        }
-
-        // Update Data Attributes
-        card.attr('data-order-data', JSON.stringify(data));
-        card.data('orderData', JSON.stringify(data));
-
-        // Update 'Check Risk' button state if phone changed
-        if (field === 'recipient_phone') {
-            const checkBtn = card.find('.check-risk-btn');
-            checkBtn.attr('data-phone', pPhone);
-            if (isPhoneValid) checkBtn.prop('disabled', false);
-            else checkBtn.prop('disabled', true);
-        }
-
-        validateAllParcels();
-        updateSummary();
-    });
-
-    // Sync Note Input with Data
+    // --- Event Listeners ---
+    
+    // Note Sync
     card.find('.input-note').on('input', function () {
         const newData = JSON.parse(card.attr('data-order-data'));
         newData.note = $(this).val();
@@ -407,10 +353,116 @@ function createParcelCard(parcelData) {
         card.data('orderData', JSON.stringify(newData));
     });
 
+    // Edit Button Click
+    card.find('.edit-btn').on('click', function() {
+        openEditModal(card);
+    });
+
     parsedDataContainer.appendChild(card[0]);
     validateAllParcels(); // Update button state
     updateSummary(); // Update totals
 }
+
+// --- Edit Modal Logic ---
+let currentEditCard = null;
+const editModal = $('#edit-parcel-modal');
+const editNameInput = $('#edit-name');
+const editPhoneInput = $('#edit-phone');
+const editAddressInput = $('#edit-address');
+const editAmountInput = $('#edit-amount');
+const editProductInput = $('#edit-product');
+const editNoteInput = $('#edit-note');
+const saveParcelBtn = $('#save-parcel-btn');
+const closeEditModalBtn = editModal.find('.close-btn');
+
+// Close Logic
+closeEditModalBtn.on('click', function() { editModal.hide(); });
+$(window).on('click', function(event) {
+    if ($(event.target).is(editModal)) { editModal.hide(); }
+});
+
+function openEditModal(card) {
+    currentEditCard = card;
+    const data = JSON.parse(card.attr('data-order-data'));
+    
+    // Populate Inputs
+    editNameInput.val(data.recipient_name || '');
+    editPhoneInput.val(data.recipient_phone || '');
+    editAddressInput.val(data.recipient_address || '');
+    editAmountInput.val(data.cod_amount || 0);
+    editProductInput.val(data.item_description || '');
+    editNoteInput.val(data.note === 'N/A' || data.note === 'null' ? '' : data.note); // Handle N/A note
+    
+    editModal.show();
+}
+
+saveParcelBtn.on('click', function() {
+    if (!currentEditCard) return;
+    
+    // 1. Get Values
+    const newName = editNameInput.val().trim();
+    const newPhone = editPhoneInput.val().trim();
+    const newAddress = editAddressInput.val().trim();
+    const newAmount = parseFloat(editAmountInput.val()) || 0;
+    const newProduct = editProductInput.val().trim();
+    const newNote = editNoteInput.val().trim();
+
+    // 2. Update Data Object
+    let data = JSON.parse(currentEditCard.attr('data-order-data'));
+    data.recipient_name = newName;
+    data.recipient_phone = newPhone;
+    data.recipient_address = newAddress;
+    data.cod_amount = newAmount;
+    data.amount = newAmount; // Sync
+    data.item_description = newProduct;
+    data.note = newNote;
+    
+    // 3. Update DOM (Re-render content mostly)
+    currentEditCard.find('.details').html(`
+        <div style="font-weight:bold; margin-bottom:2px;">${newName || 'No Name'} <span style="font-weight:normal;">(${newPhone})</span></div>
+        <div style="margin-bottom:4px;">Address: <span class="address-text">${newAddress}</span></div>
+        <div style="font-size:0.9em; color:#555;">
+            OID: ${data.order_id} | COD: <strong>${newAmount} BDT</strong> | Item: ${newProduct}
+        </div>
+        <div style="margin-top: 5px;">
+            <input type="text" class="input-note" value="${newNote}" placeholder="Add Note..." style="width: 100%; border: 1px solid #ddd; padding: 4px; font-size: 12px; border-radius: 4px;">
+        </div>
+        ${currentEditCard.find('.duplicate-warning-badge').length ? currentEditCard.find('.duplicate-warning-badge')[0].outerHTML : ''}
+    `);
+    
+    // Re-attach note listener since we replaced HTML
+    currentEditCard.find('.input-note').on('input', function () {
+        const d = JSON.parse(currentEditCard.attr('data-order-data'));
+        d.note = $(this).val();
+        currentEditCard.attr('data-order-data', JSON.stringify(d));
+        currentEditCard.data('orderData', JSON.stringify(d));
+    });
+
+    // 4. Validate
+    const pPhone = (newPhone || '').replace(/\s+/g, '');
+    const isPhoneValid = /^01[3-9]\d{8}$/.test(pPhone);
+    const isAddressValid = newAddress && newAddress !== 'N/A' && newAddress.length > 5;
+    const isPriceValid = !isNaN(newAmount) && newAmount > 0;
+    
+    if (isPhoneValid && isAddressValid && isPriceValid) {
+        currentEditCard.removeClass('invalid-parcel');
+    } else {
+        currentEditCard.addClass('invalid-parcel');
+    }
+
+    // 5. Update Attributes & Check Risk Button
+    currentEditCard.attr('data-order-data', JSON.stringify(data));
+    currentEditCard.data('orderData', JSON.stringify(data));
+    
+    const checkBtn = currentEditCard.find('.check-risk-btn');
+    checkBtn.attr('data-phone', pPhone);
+    checkBtn.prop('disabled', !isPhoneValid);
+    
+    editModal.hide();
+    validateAllParcels();
+    updateSummary();
+});
+
 
 // --- Validation Helper ---
 function validateAllParcels() {

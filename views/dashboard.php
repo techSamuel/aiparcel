@@ -251,6 +251,41 @@ if (!defined('APP_URL')) {
     </div>
 </div>
 
+<!-- Edit Parcel Modal -->
+<div id="edit-parcel-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Parcel Details</h2>
+            <span class="close-btn">&times;</span>
+        </div>
+        <div class="form-group">
+            <label>Customer Name</label>
+            <input type="text" id="edit-name">
+        </div>
+        <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" id="edit-phone">
+        </div>
+        <div class="form-group">
+            <label>Address</label>
+            <textarea id="edit-address" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+            <label>COD Amount (BDT)</label>
+            <input type="number" id="edit-amount">
+        </div>
+        <div class="form-group">
+            <label>Product Name</label>
+            <input type="text" id="edit-product">
+        </div>
+        <div class="form-group">
+            <label>Note</label>
+            <input type="text" id="edit-note">
+        </div>
+        <button id="save-parcel-btn" class="primary-btn" style="width:100%; margin-top:15px;">Save Changes</button>
+    </div>
+</div>
+
 
 
 <script src="assets/js/utils.js?v=<?php echo time(); ?>"></script>
