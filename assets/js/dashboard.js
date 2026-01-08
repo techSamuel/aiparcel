@@ -60,6 +60,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// --- GOOGLE SIGNUP PIXEL TRACKING ---
+// Check URL parameters for new_user=1 from google-auth.php
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('new_user') === '1' && urlParams.get('google_login') === 'success') {
+    try {
+        if (typeof fbq !== 'undefined') {
+            fbq('track', 'CompleteRegistration', { method: 'Google' });
+            // Clean URL to prevent double tracking on refresh
+            const newUrl = window.location.pathname + window.location.search.replace(/[\?&]new_user=1/, '').replace(/[\?&]google_login=success/, '');
+            window.history.replaceState({}, document.title, newUrl);
+        }
+    } catch (e) { console.error('Google Pixel Error:', e); }
+}
+
 // --- CORE APP FUNCTIONS ---
 async function renderAppView() {
     userInfo.textContent = currentUser.displayName || currentUser.email;
@@ -377,9 +391,10 @@ const closeEditModalBtn = editModal.find('.close-btn');
 
 // Close Logic
 closeEditModalBtn.on('click', function () { editModal.hide(); });
-$(window).on('click', function (event) {
-    if ($(event.target).is(editModal)) { editModal.hide(); }
-});
+// Outside click listener REMOVED for Edit Modal as per user request
+// $(window).on('click', function (event) {
+//     if ($(event.target).is(editModal)) { editModal.hide(); }
+// });
 
 function openEditModal(card) {
     currentEditCard = card;
