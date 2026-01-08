@@ -276,10 +276,13 @@ function loadUserStores() {
     }
     for (const id in userCourierStores) {
         const store = userCourierStores[id];
+        // Support both camelCase and snake_case property names
+        const courierType = store.courierType || store.courier_type || 'unknown';
+        const storeName = store.storeName || store.store_name || 'Unknown Store';
         // Ensure lowercase class for CSS matching (redx, pathao, steadfast)
-        const badgeClass = store.courierType.toLowerCase();
-        $('#storeList').append(`<li><span>${store.storeName} <span class="courier-badge ${badgeClass}">${store.courierType}</span></span><div class="store-actions"><button class="edit-store-btn" data-id="${id}">Edit</button><button class="delete-store-btn" data-id="${id}">&times;</button></div></li>`);
-        $('#storeSelector').append(`<option value="${id}">${store.storeName}</option>`);
+        const badgeClass = courierType.toLowerCase();
+        $('#storeList').append(`<li><span>${storeName} <span class="courier-badge ${badgeClass}">${courierType}</span></span><div class="store-actions"><button class="edit-store-btn" data-id="${id}">Edit</button><button class="delete-store-btn" data-id="${id}">&times;</button></div></li>`);
+        $('#storeSelector').append(`<option value="${id}">${storeName}</option>`);
     }
 
     // Set selected value if it exists in the list
