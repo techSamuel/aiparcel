@@ -74,6 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     await handleAuthAction('register', 'Registration successful. Please check your email.', {
                         email, password, display_name: fullName
                     });
+                    // Facebook Pixel: CompleteRegistration
+                    try { if (typeof fbq !== 'undefined') fbq('track', 'CompleteRegistration'); } catch (e) { console.error('Pixel Error:', e); }
                 }
             } catch (error) {
                 console.error("Auth Error:", error);
