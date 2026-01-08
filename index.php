@@ -201,9 +201,11 @@ if ($isLoggedIn && ($page === 'auth' || $page === 'landing' || $page === '')) {
                 if (strpos($fbLink, 'http') !== 0 && !is_numeric($facebookPageId)) {
                     $fbLink = "https://$facebookPageId";
                 }
+                // Dynamic Position: If WhatsApp exists, sit at 90px, else 20px
+                $fbBottom = !empty($whatsappNumber) ? '90px' : '20px';
                 ?>
                 <a href="<?php echo htmlspecialchars($fbLink); ?>" target="_blank"
-                    style="position:fixed; bottom:90px; right:20px; z-index:9999; background:#0084FF; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
+                    style="position:fixed; bottom:<?php echo $fbBottom; ?>; right:20px; z-index:9999; background:#0084FF; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
                     onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
                     title="Message Us on Messenger">
                     <svg width="28" height="28" viewBox="0 0 28 28" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
