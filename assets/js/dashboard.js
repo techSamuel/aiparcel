@@ -426,7 +426,7 @@ function createParcelCard(parcelData) {
         </div>
         <div class="parcel-actions">
             <button class="check-risk-btn" data-phone="${phoneForCheck}" ${checkRiskDisabled ? 'disabled' : ''} title="${checkRiskTitle}">Check Risk</button>
-            <button class="correct-address-btn" ${correctAddressDisabled ? 'disabled' : ''} title="${correctAddressTitle}">Correct Address (New)</button>
+            <button class="correct-address-btn" ${correctAddressDisabled ? 'disabled' : ''} title="${correctAddressTitle}">Correct Address With AI</button>
             <button class="edit-btn" title="Edit Details">Edit ✏️</button>
             <button class="remove-btn">&times;</button>
         </div>
