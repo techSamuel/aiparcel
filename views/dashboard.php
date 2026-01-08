@@ -135,6 +135,19 @@ if (!defined('APP_URL')) {
             </div>
         </div>
 
+        <div class="sorting-controls"
+            style="margin-bottom: 10px; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+            <label for="sortParcels" style="font-size: 14px; color: #555;">Sort By:</label>
+            <select id="sortParcels" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd;">
+                <option value="none">Default (As Parsed)</option>
+                <option value="warning">⚠️ Warnings First</option>
+                <option value="name_asc">Name (A-Z)</option>
+                <option value="name_desc">Name (Z-A)</option>
+                <option value="phone_asc">Phone (Ascending)</option>
+                <option value="phone_desc">Phone (Descending)</option>
+            </select>
+        </div>
+
         <div id="parsedDataContainer"></div>
         <button id="createOrderBtn">Create Order(s)</button>
         <div class="loader" id="loader"></div>

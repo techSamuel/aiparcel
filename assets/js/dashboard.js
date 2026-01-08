@@ -141,6 +141,57 @@ async function renderAppView() {
         toggle.checked = smartParsingEnabled;
         updateRawTextPlaceholder();
     }
+
+    // Sorting Event Listener
+    const sortDropdown = document.getElementById('sortParcels');
+    if (sortDropdown) {
+        sortDropdown.addEventListener('change', function () {
+            sortParcels(this.value);
+        });
+    }
+}
+
+// Sorting Function
+function sortParcels(criteria) {
+    const container = $('#parsedDataContainer');
+    const cards = container.children('.parcel-card').get();
+
+    cards.sort(function (a, b) {
+        const dataA = JSON.parse($(a).attr('data-order-data'));
+        const dataB = JSON.parse($(b).attr('data-order-data'));
+
+        if (criteria === 'warning') {
+            // Priority: Invalid > Duplicate > Normal
+            const isInvalidA = $(a).hasClass('invalid-parcel');
+            const isInvalidB = $(b).hasClass('invalid-parcel');
+            const isDupA = $(a).find('.duplicate-warning-badge').length > 0;
+            const isDupB = $(b).find('.duplicate-warning-badge').length > 0;
+
+            if (isInvalidA && !isInvalidB) return -1;
+            if (!isInvalidA && isInvalidB) return 1;
+            if (isDupA && !isDupB) return -1;
+            if (!isDupA && isDupB) return 1;
+            return 0;
+        }
+
+        if (criteria === 'name_asc') {
+            return (dataA.recipient_name || '').localeCompare(dataB.recipient_name || '');
+        }
+        if (criteria === 'name_desc') {
+            return (dataB.recipient_name || '').localeCompare(dataA.recipient_name || '');
+        }
+
+        if (criteria === 'phone_asc') {
+            return (dataA.recipient_phone || '').localeCompare(dataB.recipient_phone || '');
+        }
+        if (criteria === 'phone_desc') {
+            return (dataB.recipient_phone || '').localeCompare(dataA.recipient_phone || '');
+        }
+
+        return 0; // Default/None (keep existing order roughly, though stable sort depends on browser)
+    });
+
+    $.each(cards, function (idx, itm) { container.append(itm); });
 }
 
 async function renderPlanStatus() {
