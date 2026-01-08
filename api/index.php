@@ -1082,6 +1082,16 @@ function create_order($user_id, $input, $pdo)
 
     $store_id = $input['storeId'];
     $orders = $input['orders'];
+
+    // --- APPLY DEFAULT PRODUCT NAME ---
+    foreach ($orders as &$order) {
+        if (empty($order['productName'])) {
+            $order['productName'] = 'OnlineProduct';
+        }
+    }
+    unset($order); // Break reference
+    // ----------------------------------
+
     $is_bulk = count($orders) > 1;
 
     // Fetch store credentials
