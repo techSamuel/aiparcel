@@ -2837,36 +2837,53 @@ function track_visitor($user_id, $input, $pdo)
     $location = $input['location'] ?? 'Unknown';
     $user_agent = $input['userAgent'] ?? $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
     $duration = (int) ($input['durationMillis'] ?? 0);
+    $updateOnly = !empty($input['updateOnly']); // Flag for duration-only updates
 
     // Check if visitor exists (by IP + User Agent)
+    // For updateOnly, we use server IP since client doesn't send it
+    $lookup_ip = $updateOnly ? ($_SERVER['REMOTE_ADDR'] ?? 'Unknown') : $ip;
+
     $stmt = $pdo->prepare("SELECT id, visit_count FROM visitors WHERE ip_address = ? AND user_agent = ? LIMIT 1");
-    $stmt->execute([$ip, $user_agent]);
+    $stmt->execute([$lookup_ip, $user_agent]);
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($existing) {
-        // Update existing visitor
-        $new_count = $existing['visit_count'] + 1;
-        $update_stmt = $pdo->prepare("UPDATE visitors SET 
-            start_time = NOW(), 
-            duration_millis = ?,
-            visit_count = ?,
-            user_id = COALESCE(?, user_id),
-            email = COALESCE(?, email),
-            location = ?
-            WHERE id = ?");
+        if ($updateOnly) {
+            // Duration-only update - don't modify visit_count, IP, or location
+            $update_stmt = $pdo->prepare("UPDATE visitors SET duration_millis = ? WHERE id = ?");
+            $update_stmt->execute([$duration, $existing['id']]);
+            json_response(['success' => true, 'visitorId' => $existing['id'], 'isNew' => false]);
+        } else {
+            // Full update (new visit from same visitor)
+            $new_count = $existing['visit_count'] + 1;
+            $update_stmt = $pdo->prepare("UPDATE visitors SET 
+                start_time = NOW(), 
+                duration_millis = ?,
+                visit_count = ?,
+                user_id = COALESCE(?, user_id),
+                email = COALESCE(?, email),
+                location = ?
+                WHERE id = ?");
 
-        // Get email if user is logged in
-        $email = null;
-        if ($user_id) {
-            $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
-            $email_stmt->execute([$user_id]);
-            $email = $email_stmt->fetchColumn();
+            // Get email if user is logged in
+            $email = null;
+            if ($user_id) {
+                $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+                $email_stmt->execute([$user_id]);
+                $email = $email_stmt->fetchColumn();
+            }
+
+            $update_stmt->execute([$duration, $new_count, $user_id, $email, $location, $existing['id']]);
+            json_response(['success' => true, 'visitorId' => $existing['id'], 'isNew' => false]);
+        }
+    } else {
+        // Create new visitor (only if not updateOnly)
+        if ($updateOnly) {
+            // Can't update what doesn't exist, return silently
+            json_response(['success' => false, 'message' => 'Visitor not found']);
+            return;
         }
 
-        $update_stmt->execute([$duration, $new_count, $user_id, $email, $location, $existing['id']]);
-        json_response(['success' => true, 'visitorId' => $existing['id'], 'isNew' => false]);
-    } else {
-        // Create new visitor
         $email = null;
         if ($user_id) {
             $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");

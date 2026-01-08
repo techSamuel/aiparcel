@@ -61,8 +61,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'track_visitor',
-                    ip: 'existing',
-                    location: 'existing',
+                    updateOnly: true,  // Flag to indicate duration-only update
                     userAgent: navigator.userAgent,
                     durationMillis: durationMillis
                 }),
