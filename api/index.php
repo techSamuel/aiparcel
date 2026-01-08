@@ -741,6 +741,12 @@ function parseWithAi($user_id, $input, $pdo)
 
     // Count blocks (parcels) separated by empty lines
     $blocks = preg_split('/\n\s*\n/', $raw_text, -1, PREG_SPLIT_NO_EMPTY);
+
+    // Filter out blocks that are likely just separators (e.g. "=====")
+    $blocks = array_filter($blocks, function ($b) {
+        return !preg_match('/^=+$/', trim($b));
+    });
+
     $parcel_count = count($blocks);
 
     if ($parcel_count > $max_parcels) {

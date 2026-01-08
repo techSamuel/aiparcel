@@ -943,7 +943,12 @@ parseWithAIBtn.addEventListener('click', async () => {
 
     // --- Client-Side Validation ---
     // Count blocks separated by empty lines (regex: /\n\s*\n/)
-    const blocks = rawText.split(/\n\s*\n/).filter(b => b.trim().length > 0);
+    // Filter out empty blocks AND blocks that are just separators (e.g. "=====")
+    const blocks = rawText.split(/\n\s*\n/).filter(b => {
+        const trimmed = b.trim();
+        return trimmed.length > 0 && !/^=+$/.test(trimmed);
+    });
+
     if (blocks.length > aiBulkParseLimit) {
         alert(`Input too large! You provided ~${blocks.length} parcels, but the limit is ${aiBulkParseLimit}. Please split your batch.`);
         return;
