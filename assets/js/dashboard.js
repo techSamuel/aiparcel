@@ -1314,14 +1314,11 @@ function updateRawTextPlaceholder() {
     let placeholderText = "";
 
     // Force Bengali Placeholder for ALL modes as per user request
-    placeholderText = `AI স্মার্ট পার্সিং চালু আছে। আপনি যেকোনো ক্রমে তথ্য পেস্ট করতে পারেন।
+    placeholderText = `Ai পারসিং দিয়ে যেকনো এলোমেলো ডাটা এক ক্লিক এ সাজান এবং কুরিয়ার এ এন্ট্রি দিন।
 উদাহরণ:
-Customer Name
-01xxxxxxxxx
-Product Name
-500
-Full Address
-Note (Optional)`;
+মেহনাজ 01301989309
+56 পিসের দোয়া স্টিকার সেট 490
+দক্ষিণ খেজুর বাগ সাত পাখি নাহার ভবনের গলি আব্দুল কাইয়ুম মাদ্রাসা দক্ষিণ কেরানীগঞ্জ ঢাকা -১৩১০`;
     placeholderText += "\n\n(একাধিক পার্সেল আলাদা করতে প্রতিটি পার্সেলের মাঝে **একটি ফাঁকা লাইন (খালি লাইন)** দিন।)";
     placeholderText += `\n\nএকসাথে সর্বোচ্চ ${aiBulkParseLimit || 50} টি পার্সেল প্রসেস করা যাবে।`;
     rawTextInput.placeholder = placeholderText;
