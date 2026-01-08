@@ -14,6 +14,8 @@
                     id="plan-limit-daily" placeholder="Leave blank for none"></div>
             <div class="form-group"><label for="plan-limit-ai">Monthly AI Parsing Limit (Parcels)</label><input
                     type="number" id="plan-limit-ai" placeholder="Leave blank for none/unlimited"></div>
+            <div class="form-group"><label for="plan-limit-bulk">Bulk Parse Limit (Per Request)</label><input
+                    type="number" id="plan-limit-bulk" placeholder="Max parcels per AI request (default 30)"></div>
             <div class="form-group"><label for="plan-validity">Validity (Days)</label><input type="number"
                     id="plan-validity" required></div>
             <div class="form-group"><label for="plan-description">Description</label><textarea id="plan-description"
@@ -66,6 +68,7 @@
                     { data: "order_limit_monthly", visible: false },
                     { data: "order_limit_daily", visible: false },
                     { data: "ai_parsing_limit", visible: false },
+                    { data: "bulk_parse_limit", visible: false }, // Hidden col for data
                     { data: "validity_days", visible: false },
                     { data: "description", visible: false },
                     {
@@ -92,6 +95,7 @@
                     order_limit_monthly: $('#plan-limit-monthly').val() || null,
                     order_limit_daily: $('#plan-limit-daily').val() || null,
                     ai_parsing_limit: $('#plan-limit-ai').val() || 0,
+                    bulk_parse_limit: $('#plan-limit-bulk').val() || 30, // New Field
                     validity_days: $('#plan-validity').val(),
                     description: $('#plan-description').val(),
                     is_active: $('#plan-is-active').is(':checked') ? 1 : 0,
@@ -118,6 +122,7 @@
             $('#plan-limit-monthly').val(data.order_limit_monthly);
             $('#plan-limit-daily').val(data.order_limit_daily);
             $('#plan-limit-ai').val(data.ai_parsing_limit);
+            $('#plan-limit-bulk').val(data.bulk_parse_limit || 30); // New Field
             $('#plan-validity').val(data.validity_days);
             $('#plan-description').val(data.description);
             $('#plan-is-active').prop('checked', data.is_active == 1);

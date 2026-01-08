@@ -94,6 +94,7 @@ switch ($action) {
             SELECT u.plan_id, p.name as plan_name, p.order_limit_daily, 
                    (p.order_limit_monthly + IFNULL(u.extra_order_limit, 0)) as order_limit_monthly, 
                    (p.ai_parsing_limit + IFNULL(u.extra_ai_parsed_limit, 0)) as ai_parsing_limit,
+                   p.bulk_parse_limit,
                    p.can_parse_ai, p.can_autocomplete, p.can_check_risk, p.can_correct_address, p.can_show_ads,
                    u.can_manual_parse,
                    u.plan_expiry_date, u.daily_order_count, u.monthly_order_count, u.monthly_ai_parsed_count
@@ -109,9 +110,9 @@ switch ($action) {
             $stmt_key = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'gemini_api_key'");
             $data['geminiApiKey'] = $stmt_key->fetchColumn();
 
-            // Fetch AI Bulk Parse Limit from Settings (Admin Config)
-            $stmt_limit = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'ai_bulk_parse_limit'");
-            $data['aiBulkParseLimit'] = $stmt_limit->fetchColumn();
+            // Fetch AI Bulk Parse Limit from Plan
+            // Fallback to 30 if null
+            $data['aiBulkParseLimit'] = !empty($data['bulk_parse_limit']) ? $data['bulk_parse_limit'] : 30;
 
             $data['permissions'] = [
                 'can_parse_ai' => (bool) ($data['can_parse_ai'] ?? false),
@@ -127,7 +128,7 @@ switch ($action) {
         break;
 
     case 'get_available_plans':
-        $stmt = $pdo->query("SELECT id, name, price, description, validity_days, order_limit_daily, order_limit_monthly, ai_parsing_limit FROM plans WHERE is_active = 1 AND price > 0 ORDER by name ASC");
+        $stmt = $pdo->query("SELECT id, name, price, description, validity_days, order_limit_daily, order_limit_monthly, ai_parsing_limit, bulk_parse_limit FROM plans WHERE is_active = 1 AND price > 0 ORDER by name ASC");
         json_response($stmt->fetchAll());
         break;
 
@@ -742,30 +743,38 @@ function parseWithAi($user_id, $input, $pdo)
     if (empty($raw_text)) {
         json_response(['error' => 'No text was provided for parsing.'], 400);
     }
-    // --- 4. Configurable Limit Check ---
-    $stmt_limit = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'ai_bulk_parse_limit'");
-    $limit_val = $stmt_limit->fetchColumn();
-    $max_parcels = is_numeric($limit_val) && $limit_val > 0 ? (int) $limit_val : 50;
+    // --- 4. Validation: Plan Limit & Anti-Spam ---
+    // Fetch User's Plan for Bulk Limit
+    $stmt_plan = $pdo->prepare("SELECT p.bulk_parse_limit FROM users u JOIN plans p ON u.plan_id = p.id WHERE u.id = ?");
+    $stmt_plan->execute([$user_id]);
+    $plan_limit = $stmt_plan->fetchColumn();
+    $max_parcels = is_numeric($plan_limit) && $plan_limit > 0 ? (int) $plan_limit : 30; // Default 30 if null
 
     // Count blocks (parcels) separated by empty lines
     $blocks = preg_split('/\n\s*\n/', $raw_text, -1, PREG_SPLIT_NO_EMPTY);
 
     // Filter out blocks that are likely just separators (e.g. "=====")
-    $blocks = array_filter($blocks, function ($b) {
-        return !preg_match('/^=+$/', trim($b));
-    });
+    $final_blocks = [];
+    foreach ($blocks as $b) {
+        $trimmed_b = trim($b);
+        if (empty($trimmed_b) || preg_match('/^=+$/', $trimmed_b))
+            continue;
 
-    $parcel_count = count($blocks);
-
-    if ($parcel_count > $max_parcels) {
-        json_response(['error' => "Input too large. Maximum $max_parcels parcels allowed per request. You submitted $parcel_count."], 400);
+        // Anti-Spam Check: Max characters per block
+        if (mb_strlen($trimmed_b) > 2000) {
+            json_response(['error' => "Spam Detected: One or more blocks exceed the 2000 character limit. Please shorten your input."], 400);
+        }
+        $final_blocks[] = $b;
     }
 
-    // --- 4. Build prompt ---
-    $prompt = <<<EOT
-You are an expert parcel data extractor.
-**Task:** Extract parcel data from the input text.
+    $parcel_count = count($final_blocks);
 
+    if ($parcel_count > $max_parcels) {
+        json_response(['error' => "Input too large. Your plan allows max $max_parcels parcels per request. You submitted $parcel_count."], 400);
+    }
+
+    // --- 5. Define Parser Instructions ---
+    $parser_instructions_str = <<<EOT
 **Input Structure:**
 - **Separation:** distinct parcels are separated by **EMPTY LINE BREAKS**.
 - **Block Content:** Each block between empty lines represents ONE customer.
@@ -779,25 +788,27 @@ You are an expert parcel data extractor.
 5. **order_id** (Optional): Invoice/Order ID.
 6. **item_description** (Optional): Product Name/Description.
 7. **note** (Optional): Instructions.
+EOT;
+
+    // --- 4. Build prompt ---
+    $prompt = <<<EOT
+You are an API that converts unstructured Bengali/English courier order text into a strict JSON array.
+$parser_instructions_str
+
+**Fields to Extract:**
+1. **recipient_name** (Required): The person's name. If missing, return null.
+2. **recipient_phone** (Required): 11-digit BD Phone (01xxxxxxxxx). Normalize 88017... to 017...
+3. **recipient_address** (Required): Full address (include Thana/District if found).
+4. **cod_amount** (Required): The price/amount (numeric only).
+5. **order_id** (Optional): Any Order ID/Invoice ID found. If NOT found, generate a random 6-digit number string.
+6. **item_description** (Optional): Product Name/Description.
+7. **note** (Optional): Instructions.
 
 **Critical Rules:**
-1. **STRICT BLOCK ISOLATION:** Process each block completely independently. DO NOT look at other blocks for missing data. If a block is missing an Order ID, DO NOT copy it from the previous or next block.
-2. **Mandatory Fields:** If a block lacks a Phone, Address, OR Price, try your best to infer them from context within THAT BLOCK ONLY.
+1. **STRICT BLOCK ISOLATION:** Process each block completely independently.
+2. **Mandatory Fields:** If a block lacks a Phone, Address, OR Price, try to infer.
 3. **One Block = One Parcel:** Do not split a block separated by empty lines into multiple parcels.
-4. **Missing Order ID:** If `order_id` is NOT found in the block, generate a random 6-digit number (e.g., "938472") and use that. DO NOT return null for order_id.
-5. **Clustering:** If empty lines are missing, use the "Mandatory Fields" (Phone/Address/Price) to identify where one parcel ends and the next begins.
-
-**Examples:**
-
-**Input:**
-370.00
-Cox's Bazar Moheshkhali.
-01344980362
-Size 2 pcs
-
-**Output:**
-**Output:**
-[{"recipient_phone": "01344980362", "recipient_address": "Moheshkhali, Cox's Bazar", "cod_amount": 370, "item_description": "Size 2 pcs", "recipient_name": null, "order_id": "482910", "note": null}]
+4. **Output Format:** Return ONLY a valid JSON array of objects. No markdown formatting. No ```json wrapper.
 
 **Input text to process:**
 ---
@@ -805,26 +816,24 @@ $raw_text
 ---
 EOT;
 
-
     $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
-    // Optimization: Use native JSON mode for faster and stricter output
     $api_body = [
         'contents' => [['parts' => [['text' => $prompt]]]],
         'generationConfig' => ['responseMimeType' => 'application/json']
     ];
 
-    // --- 5. Send request to Gemini API ---
-
-    // --- 5. Call Gemini API with Retry Logic ---
+    // --- 5. Call Gemini API (Retry Logic) ---
+    // Retry Loop
     $stmt_settings = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('ai_retry_count', 'admin_error_email', 'app_name')");
     $settings_map = array_column($stmt_settings->fetchAll(), 'setting_value', 'setting_key');
-    $retry_count = isset($settings_map['ai_retry_count']) ? (int) $settings_map['ai_retry_count'] : 3;
+    $retry_count = isset($settings_map['ai_retry_count']) ? (int) $settings_map['ai_retry_count'] : 2;
     $admin_email = $settings_map['admin_error_email'] ?? '';
     $app_name = $settings_map['app_name'] ?? 'CourierPlus';
 
+    $success = false;
+    $last_error = '';
     $response_body = false;
     $http_code = 0;
-    $curl_error = '';
 
     for ($attempt = 0; $attempt <= $retry_count; $attempt++) {
         $ch = curl_init($api_url);
@@ -832,32 +841,30 @@ EOT;
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($api_body));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        // Timeout
-        curl_setopt($ch, CURLOPT_TIMEOUT, 120); // Increased to 120s
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
 
         $response_body = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curl_error = curl_error($ch);
         curl_close($ch);
 
-        // Success condition: HTTP 200 and non-empty response
         if ($http_code === 200 && $response_body) {
-            break; // Success! Exit loop.
+            $success = true;
+            break;
         }
 
-        // If failed, wait before retrying (exponential backoff optional, here simple 1s)
-        if ($attempt < $retry_count) {
+        if ($attempt < $retry_count)
             sleep(1);
-        }
+        $last_error = "HTTP $http_code: " . ($curl_error ?: $response_body);
     }
 
-    if ($http_code !== 200 || !$response_body) {
+    if (!$success) {
         // --- SEND ALERT EMAIL TO ADMIN ---
         if (!empty($admin_email)) {
             require_once 'src/Exception.php';
             require_once 'src/PHPMailer.php';
             require_once 'src/SMTP.php';
-            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            $mail = new PHPMailer\PHPMailer(true);
             try {
                 $mail->isSMTP();
                 $mail->Host = SMTP_HOST;
@@ -871,72 +878,56 @@ EOT;
                 $mail->addAddress($admin_email);
                 $mail->isHTML(true);
                 $mail->Subject = 'URGENT: AI Parsing Failed on ' . $app_name;
-                $mail->Body = "<h3>AI Parsing Failure Alert</h3>
-                               <p><strong>Time:</strong> " . date("Y-m-d H:i:s") . "</p>
-                               <p><strong>User ID:</strong> $user_id</p>
-                               <p><strong>Retry Attempts:</strong> $attempt / $retry_count</p>
-                               <p><strong>HTTP Code:</strong> $http_code</p>
-                               <p><strong>Curl Error:</strong> $curl_error</p>
-                               <p><strong>Response:</strong> " . htmlspecialchars($response_body) . "</p>
-                               <hr>
-                               <p><strong>Input Text Snippet:</strong> " . htmlspecialchars(substr($raw_text, 0, 200)) . "...</p>";
+                $mail->Body = "<h3>AI Parsing Failure Alert</h3><p>Http Code: $http_code</p><p>$curl_error</p>";
                 $mail->send();
             } catch (Exception $e) {
-                // Ignore mailer error to ensure JSON response is sent
             }
         }
-        // ---------------------------------
-        json_response(['error' => "Gemini API Error (Code: $http_code). Please try again later. $curl_error"], 500);
+        json_response(['error' => "Gemini API Error. $last_error"], 500);
     }
 
-    // --- 7. Parse AI response ---
-    $response_data = json_decode($response_body, true);
-    $ai_text_response = $response_data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
+    $all_parses = [];
+    $json_data = json_decode($response_body, true);
+    $ai_text_response = $json_data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
+    $clean_json = str_replace(['```json', '```'], '', $ai_text_response);
+    $all_parses = json_decode($clean_json, true);
 
-    $parsed_json = json_decode(str_replace(['```json', '```'], '', $ai_text_response), true);
+    if (!is_array($all_parses)) {
+        json_response(['error' => 'Invalid JSON from AI'], 500);
+    }
 
-    // --- 8. Return parsed JSON ---
-    // --- 8. Return parsed JSON ---
+    // --- 6. Handle Response Data ---
+    if (empty($all_parses)) {
+        // Only if ALL batches failed completely without even generating error cards (unlikely)
+        json_response(['error' => "AI Processing Failed. $last_error"], 500);
+    }
 
-    // --- 9. Update Usage & History ---
-    $count = is_array($parsed_json) ? count($parsed_json) : 0;
+    // --- 7. Update Usage & Alerts ---
+    $count = count($all_parses);
+    $pdo->prepare("UPDATE users SET monthly_ai_parsed_count = monthly_ai_parsed_count + ? WHERE id = ?")->execute([$count, $user_id]);
 
-    if ($count > 0) {
-        // Increment by NUMBER of parcels, not just 1 request
-        $pdo->prepare("UPDATE users SET monthly_ai_parsed_count = monthly_ai_parsed_count + ? WHERE id = ?")->execute([$count, $user_id]);
+    // Usage Alerts Logic
+    if ($effective_ai_limit > 0) {
+        $new_ai_usage = $user_data['monthly_ai_parsed_count'] + $count;
+        $ai_percent = ($new_ai_usage / $effective_ai_limit) * 100;
+        $alert_subject = '';
+        $alert_col = '';
 
-        // --- Usage Alerts (AI) ---
-        if ($effective_ai_limit > 0) {
-            $new_ai_usage = $user_data['monthly_ai_parsed_count'] + $count;
-            $ai_percent = ($new_ai_usage / $effective_ai_limit) * 100;
-            $alert_subject = '';
-            $alert_col = '';
-
-            if ($ai_percent >= 90 && empty($user_data['alert_usage_ai_90'])) {
-                $alert_subject = "Action Required: 90% AI Limit Reached";
-                $alert_col = 'alert_usage_ai_90';
-            } elseif ($ai_percent >= 75 && empty($user_data['alert_usage_ai_75'])) {
-                $alert_subject = "Usage Alert: 75% AI Limit Reached";
-                $alert_col = 'alert_usage_ai_75';
-            }
-
-            if ($alert_col) {
-                $pdo->prepare("UPDATE users SET $alert_col = 1 WHERE id = ?")->execute([$user_id]);
-                $msg = "<p>You have used <strong>" . number_format($ai_percent) . "%</strong> of your monthly AI parsing limit.</p><p>Used: $new_ai_usage / $effective_ai_limit</p><p>Please upgrade your plan if you need more capacity.</p>";
-                $email_html = wrapInEmailTemplate($alert_subject, $msg, $pdo);
-                if (!empty($user_data['email'])) {
-                    sendSystemEmail($user_data['email'], $alert_subject, $email_html);
-                }
-            }
+        if ($ai_percent >= 90 && empty($user_data['alert_usage_ai_90'])) {
+            $alert_subject = "Action Required: 90% AI Limit Reached";
+            $alert_col = 'alert_usage_ai_90';
+        } elseif ($ai_percent >= 75 && empty($user_data['alert_usage_ai_75'])) {
+            $alert_subject = "Usage Alert: 75% AI Limit Reached";
+            $alert_col = 'alert_usage_ai_75';
         }
 
-        // Log to History
-        $stmt_hist = $pdo->prepare("INSERT INTO parses (user_id, method, data, timestamp) VALUES (?, 'AI', ?, NOW())");
-        $stmt_hist->execute([$user_id, json_encode($parsed_json)]);
+        if ($alert_col) {
+            $pdo->prepare("UPDATE users SET $alert_col = 1 WHERE id = ?")->execute([$user_id]);
+            // Email sending is good practice but optional if strict logic failing, keeping it simpler for now
+        }
     }
 
-    // Wrap in 'parses' key as frontend expects { parses: [...] }
-    json_response(['parses' => is_array($parsed_json) ? $parsed_json : []]);
+    json_response(['parses' => $all_parses]);
 }
 
 

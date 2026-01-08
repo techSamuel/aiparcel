@@ -30,3 +30,5 @@ node_modules/
 vendor/
 
 # Config
+
+api/cache/

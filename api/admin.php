@@ -236,14 +236,23 @@ function handle_save_plan()
     global $pdo, $input;
     $id = $input['id'] ?? null;
 
-    // Prepare data, including new permissions
+    // --- AUTO-MIGRATE: Ensure bulk_parse_limit column exists ---
+    try {
+        $stmt_check = $pdo->query("SHOW COLUMNS FROM plans LIKE 'bulk_parse_limit'");
+        if ($stmt_check->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE plans ADD COLUMN bulk_parse_limit INT DEFAULT 30 AFTER ai_parsing_limit");
+        }
+    } catch (Exception $e) { /* Ignore */
+    }
+
     // Prepare data, including new permissions
     $params = [
         $input['name'],
         $input['price'],
         $input['order_limit_monthly'],
         $input['order_limit_daily'],
-        $input['ai_parsing_limit'] ?? 0, // NEW field
+        $input['ai_parsing_limit'] ?? 0,
+        $input['bulk_parse_limit'] ?? 30, // NEW Field
         $input['validity_days'],
         $input['description'],
         $input['is_active'],
@@ -255,12 +264,12 @@ function handle_save_plan()
     ];
 
     if ($id) {
-        $sql = "UPDATE plans SET name=?, price=?, order_limit_monthly=?, order_limit_daily=?, ai_parsing_limit=?, validity_days=?, description=?, is_active=?, can_parse_ai=?, can_autocomplete=?, can_check_risk=?, can_correct_address=?, can_show_ads=? WHERE id=?";
+        $sql = "UPDATE plans SET name=?, price=?, order_limit_monthly=?, order_limit_daily=?, ai_parsing_limit=?, bulk_parse_limit=?, validity_days=?, description=?, is_active=?, can_parse_ai=?, can_autocomplete=?, can_check_risk=?, can_correct_address=?, can_show_ads=? WHERE id=?";
         $params[] = $id;
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
     } else {
-        $sql = "INSERT INTO plans (name, price, order_limit_monthly, order_limit_daily, ai_parsing_limit, validity_days, description, is_active, can_parse_ai, can_autocomplete, can_check_risk, can_correct_address, can_show_ads) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO plans (name, price, order_limit_monthly, order_limit_daily, ai_parsing_limit, bulk_parse_limit, validity_days, description, is_active, can_parse_ai, can_autocomplete, can_check_risk, can_correct_address, can_show_ads) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
     }

@@ -1141,8 +1141,15 @@ parseWithAIBtn.addEventListener('click', async () => {
         return trimmed.length > 0 && !/^=+$/.test(trimmed);
     });
 
+    // Anti-Spam Check: Max 2000 chars per block
+    const spamBlock = blocks.find(b => b.length > 2000);
+    if (spamBlock) {
+        alert("Spam Detected: One or more blocks contain excessively large text (>2000 characters). Please shorten or clean your input.");
+        return;
+    }
+
     if (blocks.length > aiBulkParseLimit) {
-        alert(`Input too large! You provided ~${blocks.length} parcels, but the limit is ${aiBulkParseLimit}. Please split your batch.`);
+        alert(`Input too large! Your current plan allows max ${aiBulkParseLimit} parcels per request. You provided ~${blocks.length}.\nPlease upgrade your plan or split your input.`);
         return;
     }
     // -----------------------------
