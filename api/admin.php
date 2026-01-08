@@ -776,11 +776,21 @@ function handle_get_visitors()
 
     // Check if table exists first
     try {
+        $table_check = $pdo->query("SHOW TABLES LIKE 'visitors'");
+        if ($table_check->rowCount() == 0) {
+            // Table doesn't exist yet
+            json_response([]);
+            return;
+        }
+
         $stmt = $pdo->query("SELECT * FROM visitors ORDER BY updated_at DESC LIMIT 500");
         $visitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
         json_response($visitors);
+    } catch (PDOException $e) {
+        // Database error
+        json_response(['error' => 'Database error: ' . $e->getMessage()], 500);
     } catch (Exception $e) {
-        // Table doesn't exist yet
+        // Other errors
         json_response([]);
     }
 }
