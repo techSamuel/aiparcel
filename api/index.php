@@ -130,6 +130,30 @@ switch ($action) {
                 'can_show_ads' => (bool) ($data['can_show_ads'] ?? false),
                 'can_manual_parse' => (bool) ($data['can_manual_parse'] ?? false)
             ];
+
+            // Fetch user's stores
+            $stmt_stores = $pdo->prepare("SELECT id, store_name, courier_type FROM stores WHERE user_id = ?");
+            $stmt_stores->execute([$user_id]);
+            $stores_arr = $stmt_stores->fetchAll(PDO::FETCH_ASSOC);
+            $stores_obj = [];
+            foreach ($stores_arr as $store) {
+                $stores_obj[$store['id']] = [
+                    'store_name' => $store['store_name'],
+                    'courier_type' => $store['courier_type']
+                ];
+            }
+            $data['stores'] = $stores_obj;
+
+            // Fetch parser settings
+            $stmt_settings = $pdo->prepare("SELECT parser_settings, last_selected_store_id FROM users WHERE id = ?");
+            $stmt_settings->execute([$user_id]);
+            $user_settings = $stmt_settings->fetch(PDO::FETCH_ASSOC);
+            $data['parserSettings'] = json_decode($user_settings['parser_settings'] ?? '[]', true);
+            $data['lastSelectedStoreId'] = $user_settings['last_selected_store_id'];
+
+            // Fetch help content
+            $stmt_help = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'help_content'");
+            $data['helpContent'] = $stmt_help->fetchColumn() ?: '';
         }
 
         json_response($data);
