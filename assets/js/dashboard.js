@@ -954,16 +954,27 @@ $('#store-modal').on('click', '#addStoreBtn', async function () {
     } catch (e) { showMessage(document.getElementById('store-message'), e.message, 'error'); }
 }).on('click', '.edit-store-btn', function () {
     const store = userCourierStores[$(this).data('id')];
-    $('#editingStoreId').val($(this).data('id'));
-    $('#storeName').val(store.storeName);
-    $('#courierTypeSelector').val(store.courierType).trigger('change');
-    if (store.courierType === 'pathao') {
-        $('#pathaoClientId').val(store.clientId); $('#pathaoClientSecret').val(store.clientSecret);
-        $('#pathaoUsername').val(store.username); $('#pathaoPassword').val(store.password); $('#pathaoStoreId').val(store.storeId);
-    } else if (store.courierType === 'redx') {
-        $('#redxToken').val(store.token);
+    if (!store) return;
+
+    const id = $(this).data('id');
+    const storeName = store.storeName || store.store_name || '';
+    const courierType = store.courierType || store.courier_type || '';
+
+    $('#editingStoreId').val(id);
+    $('#storeName').val(storeName);
+    $('#courierTypeSelector').val(courierType).trigger('change');
+
+    if (courierType === 'pathao') {
+        $('#pathaoClientId').val(store.clientId || store.client_id || '');
+        $('#pathaoClientSecret').val(store.clientSecret || store.client_secret || '');
+        $('#pathaoUsername').val(store.username || '');
+        $('#pathaoPassword').val(store.password || '');
+        $('#pathaoStoreId').val(store.storeId || store.store_id || '');
+    } else if (courierType === 'redx') {
+        $('#redxToken').val(store.token || '');
     } else {
-        $('#newApiKey').val(store.apiKey); $('#newSecretKey').val(store.secretKey);
+        $('#newApiKey').val(store.apiKey || store.api_key || '');
+        $('#newSecretKey').val(store.secretKey || store.secret_key || '');
     }
     $('#addStoreBtn').text('Update Store');
 }).on('click', '.delete-store-btn', async function () {

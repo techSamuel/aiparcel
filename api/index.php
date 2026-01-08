@@ -101,7 +101,8 @@ switch ($action) {
                    p.bulk_parse_limit,
                    p.can_parse_ai, p.can_autocomplete, p.can_check_risk, p.can_correct_address, p.can_show_ads,
                    u.can_manual_parse,
-                   u.plan_expiry_date, u.daily_order_count, u.monthly_order_count, u.monthly_ai_parsed_count
+                   u.plan_expiry_date, u.daily_order_count, u.monthly_order_count, u.monthly_ai_parsed_count,
+                   u.last_selected_store_id, u.parser_settings
             FROM users u
             JOIN plans p ON u.plan_id = p.id
             WHERE u.id = ?
@@ -132,38 +133,26 @@ switch ($action) {
             ];
 
             // Fetch user's stores
-            $stmt_stores = $pdo->prepare("SELECT id, store_name, courier_type FROM stores WHERE user_id = ?");
+            $stmt_stores = $pdo->prepare("SELECT id, store_name, courier_type, credentials FROM stores WHERE user_id = ?");
             $stmt_stores->execute([$user_id]);
             $stores_arr = $stmt_stores->fetchAll(PDO::FETCH_ASSOC);
             $stores_obj = [];
             foreach ($stores_arr as $store) {
-                $stores_obj[$store['id']] = [
+                $creds = json_decode($store['credentials'], true) ?: [];
+                $stores_obj[$store['id']] = array_merge($creds, [
                     'store_name' => $store['store_name'],
-                    'courier_type' => $store['courier_type']
-                ];
+                    'storeName' => $store['store_name'], // For compatibility
+                    'courier_type' => $store['courier_type'],
+                    'courierType' => $store['courier_type'] // For compatibility
+                ]);
             }
             $data['stores'] = $stores_obj;
-
-            // Fetch parser settings (with error handling for missing columns)
-            try {
-                $stmt_settings = $pdo->prepare("SELECT parser_settings, last_selected_store_id FROM users WHERE id = ?");
-                $stmt_settings->execute([$user_id]);
-                $user_settings = $stmt_settings->fetch(PDO::FETCH_ASSOC);
-                $data['parserSettings'] = json_decode($user_settings['parser_settings'] ?? '[]', true);
-                $data['lastSelectedStoreId'] = $user_settings['last_selected_store_id'] ?? null;
-            } catch (Exception $e) {
-                // Columns might not exist - use defaults
-                $data['parserSettings'] = [];
-                $data['lastSelectedStoreId'] = null;
-            }
+            $data['lastSelectedStoreId'] = $data['last_selected_store_id'];
+            $data['parserSettings'] = json_decode($data['parser_settings'] ?? '[]', true);
 
             // Fetch help content
-            try {
-                $stmt_help = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'help_content'");
-                $data['helpContent'] = $stmt_help->fetchColumn() ?: '';
-            } catch (Exception $e) {
-                $data['helpContent'] = '';
-            }
+            $stmt_help = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'help_content'");
+            $data['helpContent'] = $stmt_help->fetchColumn() ?: '';
         }
 
         json_response($data);
@@ -534,11 +523,6 @@ function handle_auth($action, $input, $pdo)
     }
 }
 
-if ($action === 'load_user_data') {
-    // Pass the user_id if it exists, otherwise pass null
-    load_user_data($_SESSION['user_id'] ?? null, $pdo);
-}
-
 // --- Authenticated User Actions ---
 $user_id = $_SESSION['user_id'] ?? null;
 if (!$user_id) {
@@ -546,81 +530,6 @@ if (!$user_id) {
         json_response(['error' => 'Authentication required.'], 401);
     }
     exit;
-}
-
-
-function load_user_data($user_id, $pdo)
-{
-    $response = [];
-
-    // Only fetch user-specific data if the user is logged in
-    if ($user_id) {
-        // Load stores
-        $stmt_stores = $pdo->prepare("SELECT id, store_name, courier_type, credentials FROM stores WHERE user_id = ?");
-        $stmt_stores->execute([$user_id]);
-        $stores = [];
-        while ($row = $stmt_stores->fetch()) {
-            $stores[$row['id']] = [
-                'storeName' => $row['store_name'],
-                'courierType' => $row['courier_type']
-            ] + json_decode($row['credentials'], true);
-        }
-        $response['stores'] = $stores;
-
-        // NEW: Load user data and their plan permissions
-        $stmt_user = $pdo->prepare("
-            SELECT 
-                u.last_selected_store_id, 
-                u.parser_settings, -- <-- ADD THIS
-                p.can_parse_ai, 
-                p.can_autocomplete, 
-                p.can_check_risk, 
-                p.can_correct_address, 
-                p.can_show_ads,
-                u.can_manual_parse
-            FROM users u
-            LEFT JOIN plans p ON u.plan_id = p.id
-            WHERE u.id = ?
-        ");
-        $stmt_user->execute([$user_id]);
-        $userData = $stmt_user->fetch(PDO::FETCH_ASSOC);
-
-        $response['lastSelectedStoreId'] = $userData['last_selected_store_id'] ?? null;
-        $response['permissions'] = [
-            'can_parse_ai' => (bool) ($userData['can_parse_ai'] ?? false),
-            'can_autocomplete' => (bool) ($userData['can_autocomplete'] ?? false),
-            'can_check_risk' => (bool) ($userData['can_check_risk'] ?? false),
-            'can_correct_address' => (bool) ($userData['can_correct_address'] ?? false),
-            'can_show_ads' => (bool) ($userData['can_show_ads'] ?? false),
-            'can_manual_parse' => (bool) ($userData['can_manual_parse'] ?? false) // NEW Permission
-        ];
-
-        // --- THIS IS THE FIX ---
-        // It now sends 'null' if the DB is NULL,
-        // and sends '[]' if the DB has '[]'
-        if (!empty($userData['parser_settings'])) {
-            $response['parserSettings'] = json_decode($userData['parser_settings'], true);
-        } else {
-            $response['parserSettings'] = []; // Send empty array if null
-        }
-        // --- END OF FIX ---
-
-    }
-
-    // Load Global Settings (this part is always fetched)
-    $stmt_settings = $pdo->query("SELECT setting_key, setting_value FROM settings");
-    $settings = array_column($stmt_settings->fetchAll(), 'setting_value', 'setting_key');
-
-    $response += [
-        'geminiApiKey' => $settings['gemini_api_key'] ?? null,
-        'aiBulkParseLimit' => $settings['ai_bulk_parse_limit'] ?? '50', // Add this
-        'appName' => $settings['app_name'] ?? 'CourierPlus',
-        'appLogoUrl' => $settings['app_logo_url'] ?? '',
-        'ezoicPlaceholderId' => $settings['ezoic_placeholder_id'] ?? null,
-        'helpContent' => $settings['help_content'] ?? ''
-    ];
-
-    json_response($response);
 }
 
 
