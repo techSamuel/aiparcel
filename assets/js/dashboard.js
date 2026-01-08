@@ -1196,6 +1196,9 @@ parseWithAIBtn.addEventListener('click', async () => {
             if ($('#autoApplyNote').is(':checked')) {
                 applyCustomNoteToAll(true); // silent mode
             }
+
+            // Refresh Plan Usage Stats (Progress Bar & Counts)
+            await renderPlanStatus();
         } else {
             alert('AI could not parse the text.');
         }
