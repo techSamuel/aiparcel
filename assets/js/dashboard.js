@@ -1313,8 +1313,8 @@ function updateRawTextPlaceholder() {
     const useAutoParsing = document.getElementById('smartParseToggle').checked;
     let placeholderText = "";
 
-    if (useAutoParsing) {
-        placeholderText = `AI স্মার্ট পার্সিং চালু আছে। আপনি যেকোনো ক্রমে তথ্য পেস্ট করতে পারেন।
+    // Force Bengali Placeholder for ALL modes as per user request
+    placeholderText = `AI স্মার্ট পার্সিং চালু আছে। আপনি যেকোনো ক্রমে তথ্য পেস্ট করতে পারেন।
 উদাহরণ:
 Customer Name
 01xxxxxxxxx
@@ -1322,15 +1322,6 @@ Product Name
 500
 Full Address
 Note (Optional)`;
-    } else {
-        let placeholderLines = currentParserFields.map(field => {
-            let line = field.label;
-            if (!field.required) line += " (Optional)";
-            return line;
-        });
-        placeholderText = placeholderLines.join('\n');
-        placeholderText += "\n\n(Parser Settings চালু আছে। ফিল্ডগুলো অবশ্যই এই নির্দিষ্ট ক্রমে থাকতে হবে।)";
-    }
     placeholderText += "\n\n(একাধিক পার্সেল আলাদা করতে প্রতিটি পার্সেলের মাঝে **একটি ফাঁকা লাইন (খালি লাইন)** দিন।)";
     placeholderText += `\n\nএকসাথে সর্বোচ্চ ${aiBulkParseLimit || 50} টি পার্সেল প্রসেস করা যাবে।`;
     rawTextInput.placeholder = placeholderText;
