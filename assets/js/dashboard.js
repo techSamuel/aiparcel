@@ -74,6 +74,16 @@ if (urlParams.get('new_user') === '1' && urlParams.get('google_login') === 'succ
     } catch (e) { console.error('Google Pixel Error:', e); }
 }
 
+// --- EMAIL SIGNUP PIXEL TRACKING ---
+if (sessionStorage.getItem('new_email_signup') === 'true') {
+    try {
+        if (typeof fbq !== 'undefined') {
+            fbq('track', 'CompleteRegistration', { method: 'Email' });
+            sessionStorage.removeItem('new_email_signup'); // Clean up
+        }
+    } catch (e) { console.error('Email Pixel Error:', e); }
+}
+
 // --- CORE APP FUNCTIONS ---
 async function renderAppView() {
     userInfo.textContent = currentUser.displayName || currentUser.email;
