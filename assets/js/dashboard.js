@@ -324,62 +324,62 @@ function createParcelCard(parcelData) {
 
 
 
-// --- Edit Modal Logic ---
-let currentEditCard = null;
-const editModal = $('#edit-parcel-modal');
-const editNameInput = $('#edit-name');
-const editPhoneInput = $('#edit-phone');
-const editAddressInput = $('#edit-address');
-const editAmountInput = $('#edit-amount');
-const editProductInput = $('#edit-product');
-const editNoteInput = $('#edit-note');
-const saveParcelBtn = $('#save-parcel-btn');
-const closeEditModalBtn = editModal.find('.close-btn');
+    // --- Edit Modal Logic ---
+    let currentEditCard = null;
+    const editModal = $('#edit-parcel-modal');
+    const editNameInput = $('#edit-name');
+    const editPhoneInput = $('#edit-phone');
+    const editAddressInput = $('#edit-address');
+    const editAmountInput = $('#edit-amount');
+    const editProductInput = $('#edit-product');
+    const editNoteInput = $('#edit-note');
+    const saveParcelBtn = $('#save-parcel-btn');
+    const closeEditModalBtn = editModal.find('.close-btn');
 
-// Close Logic
-closeEditModalBtn.on('click', function() { editModal.hide(); });
-$(window).on('click', function(event) {
-    if ($(event.target).is(editModal)) { editModal.hide(); }
-});
+    // Close Logic
+    closeEditModalBtn.on('click', function () { editModal.hide(); });
+    $(window).on('click', function (event) {
+        if ($(event.target).is(editModal)) { editModal.hide(); }
+    });
 
-function openEditModal(card) {
-    currentEditCard = card;
-    const data = JSON.parse(card.attr('data-order-data'));
-    
-    // Populate Inputs
-    editNameInput.val(data.recipient_name || '');
-    editPhoneInput.val(data.recipient_phone || '');
-    editAddressInput.val(data.recipient_address || '');
-    editAmountInput.val(data.cod_amount || 0);
-    editProductInput.val(data.item_description || '');
-    editNoteInput.val(data.note === 'N/A' || data.note === 'null' ? '' : data.note); // Handle N/A note
-    
-    editModal.show();
-}
+    function openEditModal(card) {
+        currentEditCard = card;
+        const data = JSON.parse(card.attr('data-order-data'));
 
-saveParcelBtn.on('click', function() {
-    if (!currentEditCard) return;
-    
-    // 1. Get Values
-    const newName = editNameInput.val().trim();
-    const newPhone = editPhoneInput.val().trim();
-    const newAddress = editAddressInput.val().trim();
-    const newAmount = parseFloat(editAmountInput.val()) || 0;
-    const newProduct = editProductInput.val().trim();
-    const newNote = editNoteInput.val().trim();
+        // Populate Inputs
+        editNameInput.val(data.recipient_name || '');
+        editPhoneInput.val(data.recipient_phone || '');
+        editAddressInput.val(data.recipient_address || '');
+        editAmountInput.val(data.cod_amount || 0);
+        editProductInput.val(data.item_description || '');
+        editNoteInput.val(data.note === 'N/A' || data.note === 'null' ? '' : data.note); // Handle N/A note
 
-    // 2. Update Data Object
-    let data = JSON.parse(currentEditCard.attr('data-order-data'));
-    data.recipient_name = newName;
-    data.recipient_phone = newPhone;
-    data.recipient_address = newAddress;
-    data.cod_amount = newAmount;
-    data.amount = newAmount; // Sync
-    data.item_description = newProduct;
-    data.note = newNote;
-    
-    // 3. Update DOM (Re-render content mostly)
-    currentEditCard.find('.details').html(`
+        editModal.show();
+    }
+
+    saveParcelBtn.on('click', function () {
+        if (!currentEditCard) return;
+
+        // 1. Get Values
+        const newName = editNameInput.val().trim();
+        const newPhone = editPhoneInput.val().trim();
+        const newAddress = editAddressInput.val().trim();
+        const newAmount = parseFloat(editAmountInput.val()) || 0;
+        const newProduct = editProductInput.val().trim();
+        const newNote = editNoteInput.val().trim();
+
+        // 2. Update Data Object
+        let data = JSON.parse(currentEditCard.attr('data-order-data'));
+        data.recipient_name = newName;
+        data.recipient_phone = newPhone;
+        data.recipient_address = newAddress;
+        data.cod_amount = newAmount;
+        data.amount = newAmount; // Sync
+        data.item_description = newProduct;
+        data.note = newNote;
+
+        // 3. Update DOM (Re-render content mostly)
+        currentEditCard.find('.details').html(`
         <div style="font-weight:bold; margin-bottom:2px;">${newName || 'No Name'} <span style="font-weight:normal;">(${newPhone})</span></div>
         <div style="margin-bottom:4px;">Address: <span class="address-text">${newAddress}</span></div>
         <div style="font-size:0.9em; color:#555;">
@@ -390,39 +390,40 @@ saveParcelBtn.on('click', function() {
         </div>
         ${currentEditCard.find('.duplicate-warning-badge').length ? currentEditCard.find('.duplicate-warning-badge')[0].outerHTML : ''}
     `);
-    
-    // Re-attach note listener since we replaced HTML
-    currentEditCard.find('.input-note').on('input', function () {
-        const d = JSON.parse(currentEditCard.attr('data-order-data'));
-        d.note = $(this).val();
-        currentEditCard.attr('data-order-data', JSON.stringify(d));
-        currentEditCard.data('orderData', JSON.stringify(d));
+
+        // Re-attach note listener since we replaced HTML
+        currentEditCard.find('.input-note').on('input', function () {
+            const d = JSON.parse(currentEditCard.attr('data-order-data'));
+            d.note = $(this).val();
+            currentEditCard.attr('data-order-data', JSON.stringify(d));
+            currentEditCard.data('orderData', JSON.stringify(d));
+        });
+
+        // 4. Validate
+        const pPhone = (newPhone || '').replace(/\s+/g, '');
+        const isPhoneValid = /^01[3-9]\d{8}$/.test(pPhone);
+        const isAddressValid = newAddress && newAddress !== 'N/A' && newAddress.length > 5;
+        const isPriceValid = !isNaN(newAmount) && newAmount > 0;
+
+        if (isPhoneValid && isAddressValid && isPriceValid) {
+            currentEditCard.removeClass('invalid-parcel');
+        } else {
+            currentEditCard.addClass('invalid-parcel');
+        }
+
+        // 5. Update Attributes & Check Risk Button
+        currentEditCard.attr('data-order-data', JSON.stringify(data));
+        currentEditCard.data('orderData', JSON.stringify(data));
+
+        const checkBtn = currentEditCard.find('.check-risk-btn');
+        checkBtn.attr('data-phone', pPhone);
+        checkBtn.prop('disabled', !isPhoneValid);
+
+        editModal.hide();
+        validateAllParcels();
+        updateSummary();
     });
-
-    // 4. Validate
-    const pPhone = (newPhone || '').replace(/\s+/g, '');
-    const isPhoneValid = /^01[3-9]\d{8}$/.test(pPhone);
-    const isAddressValid = newAddress && newAddress !== 'N/A' && newAddress.length > 5;
-    const isPriceValid = !isNaN(newAmount) && newAmount > 0;
-    
-    if (isPhoneValid && isAddressValid && isPriceValid) {
-        currentEditCard.removeClass('invalid-parcel');
-    } else {
-        currentEditCard.addClass('invalid-parcel');
-    }
-
-    // 5. Update Attributes & Check Risk Button
-    currentEditCard.attr('data-order-data', JSON.stringify(data));
-    currentEditCard.data('orderData', JSON.stringify(data));
-    
-    const checkBtn = currentEditCard.find('.check-risk-btn');
-    checkBtn.attr('data-phone', pPhone);
-    checkBtn.prop('disabled', !isPhoneValid);
-    
-    editModal.hide();
-    validateAllParcels();
-    updateSummary();
-});
+}
 
 
 // --- Validation Helper ---
