@@ -111,6 +111,10 @@ switch ($action) {
             $stmt_key = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'gemini_api_key'");
             $data['geminiApiKey'] = $stmt_key->fetchColumn();
 
+            $stmt_spam = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'ai_spam_char_limit'");
+            $raw_spam = $stmt_spam->fetchColumn();
+            $data['aiSpamCharLimit'] = is_numeric($raw_spam) ? (int) $raw_spam : 2000;
+
             // Fetch AI Bulk Parse Limit from Plan
             // Fallback to 30 if null
             $data['aiBulkParseLimit'] = !empty($data['bulk_parse_limit']) ? $data['bulk_parse_limit'] : 30;
@@ -762,8 +766,13 @@ function parseWithAi($user_id, $input, $pdo)
             continue;
 
         // Anti-Spam Check: Max characters per block
-        if (mb_strlen($trimmed_b) > 2000) {
-            json_response(['error' => "Spam Detected: One or more blocks exceed the 2000 character limit. Please shorten your input."], 400);
+        // Fetch Limit dynamically
+        $stmt_spam = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'ai_spam_char_limit'");
+        $raw_spam = $stmt_spam->fetchColumn();
+        $spam_limit = is_numeric($raw_spam) ? (int) $raw_spam : 2000;
+
+        if (mb_strlen($trimmed_b) > $spam_limit) {
+            json_response(['error' => "Spam Detected: One or more blocks contain excessively large text (>$spam_limit characters)."], 400);
         }
         $final_blocks[] = $b;
     }

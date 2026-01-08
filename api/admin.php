@@ -225,6 +225,16 @@ function handle_get_user_details()
 function handle_get_plans()
 {
     global $pdo;
+
+    // --- AUTO-MIGRATE: Ensure bulk_parse_limit column exists ---
+    try {
+        $stmt_check = $pdo->query("SHOW COLUMNS FROM plans LIKE 'bulk_parse_limit'");
+        if ($stmt_check->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE plans ADD COLUMN bulk_parse_limit INT DEFAULT 30 AFTER ai_parsing_limit");
+        }
+    } catch (Exception $e) { /* Ignore */
+    }
+
     $stmt = $pdo->query("SELECT * FROM plans");
     json_response($stmt->fetchAll());
 }
@@ -462,8 +472,8 @@ function handle_get_settings()
     }
     json_response([
         'geminiApiKey' => $settings['gemini_api_key'] ?? '',
-        'aiBulkParseLimit' => $settings['ai_bulk_parse_limit'] ?? '50',
         'aiRetryCount' => $settings['ai_retry_count'] ?? '3', // Add this
+        'aiSpamCharLimit' => $settings['ai_spam_char_limit'] ?? '2000', // ADD THIS
         'adminErrorEmail' => $settings['admin_error_email'] ?? '', // Add this
         'barikoiApiKey' => $settings['barikoi_api_key'] ?? '',
         'googleMapsApiKey' => $settings['google_maps_api_key'] ?? '',
@@ -494,8 +504,8 @@ function handle_save_settings()
         $settings_to_save = [
             'app_name' => $_POST['appName'] ?? 'CourierPlus',
             'gemini_api_key' => $_POST['geminiApiKey'] ?? '',
-            'ai_bulk_parse_limit' => $_POST['aiBulkParseLimit'] ?? '50',
             'ai_retry_count' => $_POST['aiRetryCount'] ?? '3', // Add this
+            'ai_spam_char_limit' => $_POST['aiSpamCharLimit'] ?? '2000', // ADD THIS
             'admin_error_email' => $_POST['adminErrorEmail'] ?? '', // Add this
             'barikoi_api_key' => $_POST['barikoiApiKey'] ?? '',
             'google_maps_api_key' => $_POST['googleMapsApiKey'] ?? '',

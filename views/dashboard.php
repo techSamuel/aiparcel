@@ -93,7 +93,8 @@ if (!defined('APP_URL')) {
         </div>
         <div id="parsing-input-area" style="margin-top:15px; display:none;">
             <label for="rawText">Paste All Parcel Info Here</label>
-            <textarea id="rawText" rows="12" placeholder="Paste single or multiple parcel details here..."></textarea>
+            <textarea id="rawText" style="height: 300px;"
+                placeholder="Paste single or multiple parcel details here..."></textarea>
             <div class="parsing-buttons">
                 <button id="parseWithAIBtn">Parse with AI </button>
                 <button id="parseLocallyBtn">Parse Locally</button>

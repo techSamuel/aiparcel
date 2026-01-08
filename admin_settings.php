@@ -12,10 +12,19 @@
         <hr style="margin: 20px 0;">
         <div class="form-group"><label for="geminiApiKey">Gemini API Key</label><textarea type="password"
                 id="geminiApiKey"></textarea></div>
-        <div class="form-group">
-            <label for="aiRetryCount">AI Retry Count</label>
-            <input type="number" id="aiRetryCount" placeholder="3" min="0" max="10">
-            <small style="color: #666; font-size: 0.85em; display:block; margin-top:5px;">Retries on failure.</small>
+        <div class="form-group" style="display:flex; gap:10px;">
+            <div style="flex:1;">
+                <label for="aiRetryCount">AI Retry Count</label>
+                <input type="number" id="aiRetryCount" placeholder="3" min="0" max="10">
+                <small style="color: #666; font-size: 0.85em; display:block; margin-top:5px;">Retries on
+                    failure.</small>
+            </div>
+            <div style="flex:1;">
+                <label for="aiSpamCharLimit">AI Spam Char Limit</label>
+                <input type="number" id="aiSpamCharLimit" placeholder="2000" min="100" max="10000">
+                <small style="color: #666; font-size: 0.85em; display:block; margin-top:5px;">Max chars per
+                    block.</small>
+            </div>
         </div>
         <div class="form-group"><label for="adminErrorEmail">Admin Error Email</label><input type="email"
                 id="adminErrorEmail" placeholder="admin@example.com">
@@ -170,6 +179,7 @@
                 $('#geminiApiKey').val(result.geminiApiKey || '');
 
                 $('#aiRetryCount').val(result.aiRetryCount || '3'); // Add this
+                $('#aiSpamCharLimit').val(result.aiSpamCharLimit || '2000');
                 $('#adminErrorEmail').val(result.adminErrorEmail || ''); // Add this
                 $('#barikoiApiKey').val(result.barikoiApiKey || '');
                 $('#googleMapsApiKey').val(result.googleMapsApiKey || ''); // Fixed duplicate
@@ -214,6 +224,7 @@
             formData.append('geminiApiKey', $('#geminiApiKey').val());
 
             formData.append('aiRetryCount', $('#aiRetryCount').val()); // Add this
+            formData.append('aiSpamCharLimit', $('#aiSpamCharLimit').val());
             formData.append('adminErrorEmail', $('#adminErrorEmail').val()); // Add this
             formData.append('barikoiApiKey', $('#barikoiApiKey').val());
             formData.append('googleMapsApiKey', $('#googleMapsApiKey').val());

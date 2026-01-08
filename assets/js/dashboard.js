@@ -1,6 +1,7 @@
 let userCourierStores = {};
 let geminiApiKey = null;
 let aiBulkParseLimit = 50; // Default limit
+let aiSpamCharLimit = 2000; // Default spam limit
 let isPremiumUser = false;
 let currentUser = null;
 let userPermissions = {};
@@ -92,6 +93,7 @@ async function renderAppView() {
     userCourierStores = data.stores || {};
     geminiApiKey = data.geminiApiKey;
     aiBulkParseLimit = parseInt(data.aiBulkParseLimit) || 50; // Load limit (Restored)
+    aiSpamCharLimit = parseInt(data.aiSpamCharLimit) || 2000;
 
     // Update Placeholder with Dynamic Limit & Bengali Text
     // This is now handled by updateRawTextPlaceholder() to ensure it persists across mode toggles
