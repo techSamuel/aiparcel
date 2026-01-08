@@ -44,6 +44,32 @@
             </div>
         </div>
         <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
+            <label>Social Media Integration</label>
+            <div style="margin-bottom: 15px;">
+                <label style="cursor:pointer; font-weight: normal; display:flex; align-items:center; gap: 8px;"><input
+                        type="checkbox" id="enableSocialPlugins"> Enable Social Chat Plugins (FB & WhatsApp)</label>
+            </div>
+            <div class="form-group"><label for="facebookPageId">Facebook Page ID (For Messenger Chat)</label><input
+                    type="text" id="facebookPageId" placeholder="e.g. 104033333333333">
+                <small>Find your Page ID in Page Settings > About.</small>
+            </div>
+            <div class="form-group"><label for="whatsappNumber">WhatsApp Number (For Floating Button)</label><input
+                    type="text" id="whatsappNumber" placeholder="e.g. +8801700000000"></div>
+        </div>
+
+        <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
+            <label>SEO Settings (Open Graph)</label>
+            <div class="form-group"><label for="seoTitle">Default Meta Title</label><input type="text" id="seoTitle"
+                    placeholder="e.g. AiParcel - Automate Your Deliveries"></div>
+            <div class="form-group"><label for="seoDescription">Default Meta Description</label><textarea
+                    id="seoDescription"
+                    placeholder="e.g. The best tool for managing RedX, Pathao, and Steadfast parcels..."></textarea>
+            </div>
+            <div class="form-group"><label for="seoImageUrl">Default OG Image URL</label><input type="text"
+                    id="seoImageUrl" placeholder="https://example.com/banner.jpg"></div>
+        </div>
+
+        <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
             <label for="helpContent">Help Modal Content (HTML/CSS Allowed)</label>
             <textarea id="helpContent" rows="15"
                 placeholder="Enter the HTML and CSS for your help guide here..."></textarea>
@@ -97,6 +123,12 @@
                 $('#showAutocompleteButton').prop('checked', result.showAutocompleteButton == '1');
                 $('#ezoicPlaceholderId').val(result.ezoicPlaceholderId || '');
                 $('#helpContent').val(result.helpContent || '');
+                $('#facebookPageId').val(result.facebookPageId || '');
+                $('#whatsappNumber').val(result.whatsappNumber || '');
+                $('#enableSocialPlugins').prop('checked', result.enableSocialPlugins == '1' || result.enableSocialPlugins === 'true');
+                $('#seoTitle').val(result.seoTitle || '');
+                $('#seoDescription').val(result.seoDescription || '');
+                $('#seoImageUrl').val(result.seoImageUrl || '');
             } catch (e) { console.error(e); }
         }
         loadSettings();
@@ -116,6 +148,12 @@
             formData.append('showAutocompleteButton', $('#showAutocompleteButton').is(':checked') ? '1' : '0');
             formData.append('ezoicPlaceholderId', $('#ezoicPlaceholderId').val());
             formData.append('helpContent', $('#helpContent').val());
+            formData.append('facebookPageId', $('#facebookPageId').val());
+            formData.append('whatsappNumber', $('#whatsappNumber').val());
+            formData.append('enableSocialPlugins', $('#enableSocialPlugins').is(':checked') ? '1' : '0');
+            formData.append('seoTitle', $('#seoTitle').val());
+            formData.append('seoDescription', $('#seoDescription').val());
+            formData.append('seoImageUrl', $('#seoImageUrl').val());
 
             const logoFile = $('#appLogoFile')[0].files[0];
             if (logoFile) formData.append('appLogoFile', logoFile);

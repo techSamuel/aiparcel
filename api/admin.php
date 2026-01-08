@@ -463,7 +463,13 @@ function handle_get_settings()
         'appName' => $settings['app_name'] ?? 'CourierPlus',
         'appLogoUrl' => $settings['app_logo_url'] ?? '',
         'ezoicPlaceholderId' => $settings['ezoic_placeholder_id'] ?? '', // Add this
-        'helpContent' => $settings['help_content'] ?? '' // Add this line
+        'helpContent' => $settings['help_content'] ?? '',
+        'facebookPageId' => $settings['facebook_page_id'] ?? '',
+        'whatsappNumber' => $settings['whatsapp_number'] ?? '',
+        'enableSocialPlugins' => $settings['enable_social_plugins'] ?? '0',
+        'seoTitle' => $settings['seo_title'] ?? '',
+        'seoDescription' => $settings['seo_description'] ?? '',
+        'seoImageUrl' => $settings['seo_image_url'] ?? ''
     ]);
 }
 
@@ -483,7 +489,13 @@ function handle_save_settings()
             'show_ai_parse_button' => $_POST['showAiParseButton'] ?? '1',
             'show_autocomplete_button' => $_POST['showAutocompleteButton'] ?? '1',
             'ezoic_placeholder_id' => $_POST['ezoicPlaceholderId'] ?? '', // Add this
-            'help_content' => $_POST['helpContent'] ?? ''
+            'help_content' => $_POST['helpContent'] ?? '',
+            'facebook_page_id' => $_POST['facebookPageId'] ?? '',
+            'whatsapp_number' => $_POST['whatsappNumber'] ?? '',
+            'enable_social_plugins' => $_POST['enableSocialPlugins'] ?? '0',
+            'seo_title' => $_POST['seoTitle'] ?? '',
+            'seo_description' => $_POST['seoDescription'] ?? '',
+            'seo_image_url' => $_POST['seoImageUrl'] ?? ''
         ];
 
         if (isset($_FILES['appLogoFile']) && $_FILES['appLogoFile']['error'] == UPLOAD_ERR_OK) {
