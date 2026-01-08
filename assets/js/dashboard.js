@@ -91,6 +91,8 @@ async function renderAppView() {
     const data = await apiCall('load_user_data');
     userCourierStores = data.stores || {};
     geminiApiKey = data.geminiApiKey;
+    aiBulkParseLimit = parseInt(data.aiBulkParseLimit) || 50; // Load limit (Restored)
+
     // Update Placeholder with Dynamic Limit & Bengali Text
     // This is now handled by updateRawTextPlaceholder() to ensure it persists across mode toggles
 
