@@ -52,39 +52,50 @@
             <div class="form-group"><label for="facebookPageId">Facebook Page ID (For Messenger Chat)</label><input
                     type="text" id="facebookPageId" placeholder="e.g. 104033333333333">
                 <small>Find your Page ID in Page Settings > About.</small>
-            </div>
-            <div class="form-group"><label for="whatsappNumber">WhatsApp Number (For Floating Button)</label><input
-                    type="text" id="whatsappNumber" placeholder="e.g. +8801700000000"></div>
-        </div>
-
-        <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
-            <label>SEO Settings (Open Graph)</label>
-            <div class="form-group"><label for="seoTitle">Default Meta Title</label><input type="text" id="seoTitle"
-                    placeholder="e.g. AiParcel - Automate Your Deliveries"></div>
-            <div class="form-group"><label for="seoDescription">Default Meta Description</label><textarea
-                    id="seoDescription"
-                    placeholder="e.g. The best tool for managing RedX, Pathao, and Steadfast parcels..."></textarea>
-            </div>
-            <div class="form-group">
-                <label for="seoImageFile">Default OG Image (Upload/URL)</label>
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <input type="file" id="seoImageFile" accept="image/*" style="flex:1;">
-                    <div style="font-size:12px; color:#666;">OR</div>
-                    <input type="text" id="seoImageUrl" placeholder="https://example.com/banner.jpg" style="flex:1;">
+                <div class="form-group"><label for="facebookPageId">Facebook Page ID (For Messenger Chat)</label><input
+                        type="text" id="facebookPageId" placeholder="e.g. 104033333333333">
+                    <small>Find your Page ID in Page Settings > About.</small>
+                    <div style="margin-top:5px;">
+                        <label
+                            style="cursor:pointer; font-weight: normal; font-size: 13px; display:flex; align-items:center; gap: 8px;">
+                            <input type="checkbox" id="useSimpleFbBtn"> Force Simple Link (Use this if Plugin fails to
+                            load)
+                        </label>
+                    </div>
                 </div>
-                <div style="margin-top:10px;">
-                    <img id="seoImagePreview" src="" alt="Preview"
-                        style="max-width: 200px; display:none; border-radius:8px; border: 1px solid #ddd;">
+                <div class="form-group"><label for="whatsappNumber">WhatsApp Number (For Floating Button)</label><input
+                        type="text" id="whatsappNumber" placeholder="e.g. +8801700000000"></div>
+            </div>
+
+            <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <label>SEO Settings (Open Graph)</label>
+                <div class="form-group"><label for="seoTitle">Default Meta Title</label><input type="text" id="seoTitle"
+                        placeholder="e.g. AiParcel - Automate Your Deliveries"></div>
+                <div class="form-group"><label for="seoDescription">Default Meta Description</label><textarea
+                        id="seoDescription"
+                        placeholder="e.g. The best tool for managing RedX, Pathao, and Steadfast parcels..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="seoImageFile">Default OG Image (Upload/URL)</label>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="file" id="seoImageFile" accept="image/*" style="flex:1;">
+                        <div style="font-size:12px; color:#666;">OR</div>
+                        <input type="text" id="seoImageUrl" placeholder="https://example.com/banner.jpg"
+                            style="flex:1;">
+                    </div>
+                    <div style="margin-top:10px;">
+                        <img id="seoImagePreview" src="" alt="Preview"
+                            style="max-width: 200px; display:none; border-radius:8px; border: 1px solid #ddd;">
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
-            <label for="helpContent">Help Modal Content (HTML/CSS Allowed)</label>
-            <textarea id="helpContent" rows="15"
-                placeholder="Enter the HTML and CSS for your help guide here..."></textarea>
-        </div>
-        <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Settings</button>
+            <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <label for="helpContent">Help Modal Content (HTML/CSS Allowed)</label>
+                <textarea id="helpContent" rows="15"
+                    placeholder="Enter the HTML and CSS for your help guide here..."></textarea>
+            </div>
+            <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Settings</button>
     </form>
 </div>
 <div class="card settings-form" style="margin-top: 20px;">
@@ -134,6 +145,7 @@
                 $('#ezoicPlaceholderId').val(result.ezoicPlaceholderId || '');
                 $('#helpContent').val(result.helpContent || '');
                 $('#facebookPageId').val(result.facebookPageId || '');
+                $('#useSimpleFbBtn').prop('checked', result.useSimpleFbBtn == '1' || result.useSimpleFbBtn === 'true');
                 $('#whatsappNumber').val(result.whatsappNumber || '');
                 $('#enableSocialPlugins').prop('checked', result.enableSocialPlugins == '1' || result.enableSocialPlugins === 'true');
                 $('#seoTitle').val(result.seoTitle || '');
@@ -147,11 +159,11 @@
         loadSettings();
 
         // Preview Image on Select
-        $('#seoImageFile').on('change', function() {
+        $('#seoImageFile').on('change', function () {
             const file = this.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     $('#seoImagePreview').attr('src', e.target.result).show();
                 }
                 reader.readAsDataURL(file);
@@ -174,6 +186,7 @@
             formData.append('ezoicPlaceholderId', $('#ezoicPlaceholderId').val());
             formData.append('helpContent', $('#helpContent').val());
             formData.append('facebookPageId', $('#facebookPageId').val());
+            formData.append('useSimpleFbBtn', $('#useSimpleFbBtn').is(':checked') ? '1' : '0');
             formData.append('whatsappNumber', $('#whatsappNumber').val());
             formData.append('enableSocialPlugins', $('#enableSocialPlugins').is(':checked') ? '1' : '0');
             formData.append('seoTitle', $('#seoTitle').val());

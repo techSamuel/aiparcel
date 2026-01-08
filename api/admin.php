@@ -465,6 +465,7 @@ function handle_get_settings()
         'ezoicPlaceholderId' => $settings['ezoic_placeholder_id'] ?? '', // Add this
         'helpContent' => $settings['help_content'] ?? '',
         'facebookPageId' => $settings['facebook_page_id'] ?? '',
+        'useSimpleFbBtn' => $settings['use_simple_fb_btn'] ?? '0',
         'whatsappNumber' => $settings['whatsapp_number'] ?? '',
         'enableSocialPlugins' => $settings['enable_social_plugins'] ?? '0',
         'seoTitle' => $settings['seo_title'] ?? '',
@@ -491,6 +492,7 @@ function handle_save_settings()
             'ezoic_placeholder_id' => $_POST['ezoicPlaceholderId'] ?? '', // Add this
             'help_content' => $_POST['helpContent'] ?? '',
             'facebook_page_id' => $_POST['facebookPageId'] ?? '',
+            'use_simple_fb_btn' => $_POST['useSimpleFbBtn'] ?? '0',
             'whatsapp_number' => $_POST['whatsappNumber'] ?? '',
             'enable_social_plugins' => $_POST['enableSocialPlugins'] ?? '0',
             'seo_title' => $_POST['seoTitle'] ?? '',
