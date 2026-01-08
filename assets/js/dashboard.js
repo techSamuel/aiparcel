@@ -322,46 +322,7 @@ function createParcelCard(parcelData) {
         }
     }
 
-    card.html(`
-        <div class="details">
-            <div style="font-weight:bold; margin-bottom:2px;">${customerName} <span style="font-weight:normal;">(${phone})</span></div>
-            <div style="margin-bottom:4px;">Address: <span class="address-text">${address}</span></div>
-            <div style="font-size:0.9em; color:#555;">
-                OID: ${orderId} | COD: <strong>${amount} BDT</strong> | Item: ${productName}
-            </div>
-            <div style="margin-top: 5px;">
-                <input type="text" class="input-note" value="${note !== 'N/A' ? note : ''}" placeholder="Add Note..." style="width: 100%; border: 1px solid #ddd; padding: 4px; font-size: 12px; border-radius: 4px;">
-            </div>
-            ${duplicateBadgeHtml}
-        </div>
-        <div class="parcel-actions">
-            <button class="edit-btn" title="Edit Details">Edit ✏️</button>
-            <button class="check-risk-btn" data-phone="${phoneForCheck}" ${checkRiskDisabled ? 'disabled' : ''} title="${checkRiskTitle}">Check Risk</button>
-            <button class="correct-address-btn" ${correctAddressDisabled ? 'disabled' : ''} title="${correctAddressTitle}">Correct Address 🤖 AI</button>
-            <button class="remove-btn">&times;</button>
-        </div>
-        <div class="fraud-results-container" style="display: none;"></div>
-    `);
 
-    // --- Event Listeners ---
-    
-    // Note Sync
-    card.find('.input-note').on('input', function () {
-        const newData = JSON.parse(card.attr('data-order-data'));
-        newData.note = $(this).val();
-        card.attr('data-order-data', JSON.stringify(newData));
-        card.data('orderData', JSON.stringify(newData));
-    });
-
-    // Edit Button Click
-    card.find('.edit-btn').on('click', function() {
-        openEditModal(card);
-    });
-
-    parsedDataContainer.appendChild(card[0]);
-    validateAllParcels(); // Update button state
-    updateSummary(); // Update totals
-}
 
 // --- Edit Modal Logic ---
 let currentEditCard = null;

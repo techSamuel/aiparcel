@@ -1127,3 +1127,20 @@ input:checked+.slider:before {
         display: none;
     }
 }
+
+.edit-btn {
+    background-color: #ffc107;
+    color: #000;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    margin-right: 5px;
+    transition: background-color 0.2s;
+}
+
+.edit-btn:hover {
+    background-color: #e0a800;
+}
+
