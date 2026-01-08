@@ -733,9 +733,17 @@ function parseWithAi($user_id, $input, $pdo)
     if (empty($raw_text)) {
         json_response(['error' => 'No text was provided for parsing.'], 400);
     }
-    // Limit input to approx 50 parcels (15000 chars)
-    if (strlen($raw_text) > 15000) {
-        json_response(['error' => 'Input too large. Maximum 50 parcels allowed per request.'], 400);
+    // --- 4. Configurable Limit Check ---
+    $stmt_limit = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'ai_bulk_parse_limit'");
+    $limit_val = $stmt_limit->fetchColumn();
+    $max_parcels = is_numeric($limit_val) && $limit_val > 0 ? (int) $limit_val : 50;
+
+    // Count blocks (parcels) separated by empty lines
+    $blocks = preg_split('/\n\s*\n/', $raw_text, -1, PREG_SPLIT_NO_EMPTY);
+    $parcel_count = count($blocks);
+
+    if ($parcel_count > $max_parcels) {
+        json_response(['error' => "Input too large. Maximum $max_parcels parcels allowed per request. You submitted $parcel_count."], 400);
     }
 
     // --- 4. Build prompt ---

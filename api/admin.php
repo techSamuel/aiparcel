@@ -453,6 +453,7 @@ function handle_get_settings()
     }
     json_response([
         'geminiApiKey' => $settings['gemini_api_key'] ?? '',
+        'aiBulkParseLimit' => $settings['ai_bulk_parse_limit'] ?? '50', // Add this
         'barikoiApiKey' => $settings['barikoi_api_key'] ?? '',
         'googleMapsApiKey' => $settings['google_maps_api_key'] ?? '',
         'googleClientId' => $settings['google_client_id'] ?? '',
@@ -482,6 +483,7 @@ function handle_save_settings()
         $settings_to_save = [
             'app_name' => $_POST['appName'] ?? 'CourierPlus',
             'gemini_api_key' => $_POST['geminiApiKey'] ?? '',
+            'ai_bulk_parse_limit' => $_POST['aiBulkParseLimit'] ?? '50', // Add this
             'barikoi_api_key' => $_POST['barikoiApiKey'] ?? '',
             'google_maps_api_key' => $_POST['googleMapsApiKey'] ?? '',
             'google_client_id' => $_POST['googleClientId'] ?? '',
