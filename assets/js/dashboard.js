@@ -282,7 +282,7 @@ function createParcelCard(parcelData) {
 
     // Strict Validation: Phone, Address, Price, and Name (implicitly handled by default)
     const isAddressValid = address && address !== 'N/A' && address !== 'null' && address.length > 5;
-    const isPriceValid = !isNaN(amount) && amount >= 0;
+    const isPriceValid = !isNaN(amount) && amount > 0;
 
     // Check if mandatory fields are missing/invalid
     const isInvalid = !isPhoneValid || !isAddressValid || !isPriceValid;
@@ -442,7 +442,7 @@ saveParcelBtn.on('click', function () {
     const pPhone = (newPhone || '').replace(/\s+/g, '');
     const isPhoneValid = /^01[3-9]\d{8}$/.test(pPhone);
     const isAddressValid = newAddress && newAddress !== 'N/A' && newAddress.length > 5;
-    const isPriceValid = !isNaN(newAmount) && newAmount >= 0;
+    const isPriceValid = !isNaN(newAmount) && newAmount > 0;
 
     if (isPhoneValid && isAddressValid && isPriceValid) {
         currentEditCard.removeClass('invalid-parcel');
