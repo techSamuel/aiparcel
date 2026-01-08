@@ -91,23 +91,8 @@ async function renderAppView() {
     const data = await apiCall('load_user_data');
     userCourierStores = data.stores || {};
     geminiApiKey = data.geminiApiKey;
-    aiBulkParseLimit = parseInt(data.aiBulkParseLimit) || 50; // Load limit
-
     // Update Placeholder with Dynamic Limit & Bengali Text
-    if (rawTextInput) {
-        rawTextInput.placeholder = `AI স্মার্ট পার্সিং চালু আছে। আপনি যেকোনো ক্রমে তথ্য পেস্ট করতে পারেন।
-উদাহরণ:
-Customer Name
-01xxxxxxxxx
-Product Name
-500
-Full Address
-Note (Optional)
-
-(একাধিক পার্সেল আলাদা করতে প্রতিটি পার্সেলের মাঝে **একটি ফাঁকা লাইন (খালি লাইন)** দিন।)
-
-একসাথে সর্বোচ্চ ${aiBulkParseLimit} টি পার্সেল প্রসেস করা যাবে।`;
-    }
+    // This is now handled by updateRawTextPlaceholder() to ensure it persists across mode toggles
 
     userPermissions = data.permissions || {};
     helpContent = data.helpContent || '<p>No help guide has been set up by the administrator.</p>';
@@ -1329,16 +1314,14 @@ function updateRawTextPlaceholder() {
     let placeholderText = "";
 
     if (useAutoParsing) {
-        placeholderText = [
-            "AI Smart Parsing Active. You can paste fields in any order.",
-            "Example:",
-            "Customer Name",
-            "01xxxxxxxxx",
-            "Product Name",
-            "500",
-            "Full Address",
-            "Note (Optional)"
-        ].join('\n');
+        placeholderText = `AI স্মার্ট পার্সিং চালু আছে। আপনি যেকোনো ক্রমে তথ্য পেস্ট করতে পারেন।
+উদাহরণ:
+Customer Name
+01xxxxxxxxx
+Product Name
+500
+Full Address
+Note (Optional)`;
     } else {
         let placeholderLines = currentParserFields.map(field => {
             let line = field.label;
@@ -1349,6 +1332,7 @@ function updateRawTextPlaceholder() {
         placeholderText += "\n\n(Parser Settings চালু আছে। ফিল্ডগুলো অবশ্যই এই নির্দিষ্ট ক্রমে থাকতে হবে।)";
     }
     placeholderText += "\n\n(একাধিক পার্সেল আলাদা করতে প্রতিটি পার্সেলের মাঝে **একটি ফাঁকা লাইন (খালি লাইন)** দিন।)";
+    placeholderText += `\n\nএকসাথে সর্বোচ্চ ${aiBulkParseLimit || 50} টি পার্সেল প্রসেস করা যাবে।`;
     rawTextInput.placeholder = placeholderText;
 }
 
