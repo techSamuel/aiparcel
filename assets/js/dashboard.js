@@ -323,10 +323,21 @@ function createParcelCard(parcelData) {
     }
 
     card.html(`
-        <div class="details">
-            <strong>${customerName}</strong> (${phone})<br>
-            Address: <span class="address-text">${address}</span><br>
-            OrderID: ${orderId} | COD: <strong>${amount} BDT</strong> | Item: ${productName}
+        <div class="details" style="width: 100%;">
+            <div style="display:flex; gap:5px; margin-bottom:4px; align-items:center;">
+                <input type="text" class="edit-field" data-field="recipient_name" value="${customerName}" placeholder="Name" style="flex:1; padding:3px; border:1px solid #ddd; border-radius:3px;">
+                <input type="text" class="edit-field" data-field="recipient_phone" value="${phone}" placeholder="Phone" style="flex:1; padding:3px; border:1px solid #ddd; border-radius:3px;">
+            </div>
+            <div style="margin-bottom:4px;">
+                <textarea class="edit-field address-text" data-field="recipient_address" placeholder="Address" style="width:100%; padding:3px; border:1px solid #ddd; border-radius:3px; resize:vertical; min-height:40px;">${address}</textarea>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center; font-size: 0.9em; color: #555;">
+                <span>OID: ${orderId}</span>
+                <span style="display:flex; align-items:center; gap:3px;">
+                    | COD: <input type="number" class="edit-field" data-field="amount" value="${amount}" style="width:70px; padding:2px; border:1px solid #ddd;"> BDT
+                </span>
+                <span>| Item: ${productName}</span>
+            </div>
             <div style="margin-top: 5px;">
                 <input type="text" class="input-note" value="${note !== 'N/A' ? note : ''}" placeholder="Add Note..." style="width: 100%; border: 1px solid #ddd; padding: 4px; font-size: 12px; border-radius: 4px;">
             </div>
@@ -339,6 +350,54 @@ function createParcelCard(parcelData) {
         </div>
         <div class="fraud-results-container" style="display: none;"></div>
     `);
+
+    // --- Dynamic Input Validation & Data Sync ---
+    card.find('.edit-field').on('input change', function () {
+        const field = $(this).data('field');
+        // For textarea/input, gets current value
+        let val = $(this).val();
+
+        let data = JSON.parse(card.attr('data-order-data'));
+
+        if (field === 'amount') {
+            data.cod_amount = parseFloat(val) || 0;
+            data.amount = data.cod_amount;
+        } else {
+            // If phone, we might want to normalize on the fly, but let user type freely for corrections
+            data[field] = val;
+        }
+
+        // --- Re-Validate ---
+        const pPhone = (data.recipient_phone || '').replace(/\s+/g, '');
+        const isPhoneValid = /^01[3-9]\d{8}$/.test(pPhone);
+
+        const pAddress = data.recipient_address;
+        const isAddressValid = pAddress && pAddress !== 'N/A' && pAddress !== 'null' && pAddress.length > 5;
+
+        const pAmount = parseFloat(data.amount);
+        const isPriceValid = !isNaN(pAmount) && pAmount > 0;
+
+        if (isPhoneValid && isAddressValid && isPriceValid) {
+            card.removeClass('invalid-parcel');
+        } else {
+            card.addClass('invalid-parcel');
+        }
+
+        // Update Data Attributes
+        card.attr('data-order-data', JSON.stringify(data));
+        card.data('orderData', JSON.stringify(data));
+
+        // Update 'Check Risk' button state if phone changed
+        if (field === 'recipient_phone') {
+            const checkBtn = card.find('.check-risk-btn');
+            checkBtn.attr('data-phone', pPhone);
+            if (isPhoneValid) checkBtn.prop('disabled', false);
+            else checkBtn.prop('disabled', true);
+        }
+
+        validateAllParcels();
+        updateSummary();
+    });
 
     // Sync Note Input with Data
     card.find('.input-note').on('input', function () {
