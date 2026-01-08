@@ -1392,7 +1392,7 @@ function updateRawTextPlaceholder() {
 56 পিসের দোয়া স্টিকার সেট 490
 দক্ষিণ খেজুর বাগ সাত পাখি নাহার ভবনের গলি আব্দুল কাইয়ুম মাদ্রাসা দক্ষিণ কেরানীগঞ্জ ঢাকা -১৩১০`;
     placeholderText += "\n\n(একাধিক পার্সেল আলাদা করতে প্রতিটি পার্সেলের মাঝে **একটি ফাঁকা লাইন (খালি লাইন)** দিন।)";
-    placeholderText += `\n\nএকসাথে সর্বোচ্চ ${aiBulkParseLimit || 50} টি পার্সেল প্রসেস করা যাবে।`;
+    placeholderText += `\n\nআপনার প্ল্যান লিমিট: একসাথে সর্বোচ্চ ${aiBulkParseLimit || 30} টি পার্সেল।`;
     rawTextInput.placeholder = placeholderText;
 }
 
@@ -1480,6 +1480,7 @@ openUpgradeModalBtn.addEventListener('click', async () => {
             if (plan.validity_days > 0) details.push(`Validity: ${plan.validity_days} Days`);
             if (plan.order_limit_monthly > 0) details.push(`Orders: ${plan.order_limit_monthly}/mo`);
             if (plan.ai_parsing_limit > 0) details.push(`AI Parsing: ${plan.ai_parsing_limit}/mo`);
+            if (plan.bulk_parse_limit > 0) details.push(`Bulk Limit: ${plan.bulk_parse_limit}/req`);
 
             const detailHtml = details.length > 0 ? `<div style="font-size: 0.85em; color: #555; margin-top: 5px; background: #eef; padding: 4px; border-radius: 4px;">${details.join(' &bull; ')}</div>` : '';
 
