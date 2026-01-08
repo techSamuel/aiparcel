@@ -1092,14 +1092,45 @@ parseWithAIBtn.addEventListener('click', async () => {
     }
     // -----------------------------
 
-    loader.style.display = 'block';
+    // --- Estimated Wait Time Logic ---
+    const estimatedSeconds = Math.max(5, Math.ceil(blocks.length * 1.5)); // Min 5s, ~1.5s per block
+    let remainingSeconds = estimatedSeconds;
+
     $('.parsing-buttons button').prop('disabled', true);
     parsedDataContainer.innerHTML = '';
     duplicatePhoneData = {}; // Reset on new parse
+
+    // Create Progress UI
+    const progressHtml = `
+        <div id="parsing-progress" style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; margin-top: 20px;">
+            <div class="loader" style="display: inline-block; animation: spin 2s linear infinite;"></div>
+            <h3 style="margin: 10px 0 5px; color: #333;">Analyzing ${blocks.length} Parcels with AI...</h3>
+            <p style="color: #666; font-size: 14px;">Estimated time remaining: <strong id="countdown-timer" style="color: var(--primary-color);">${remainingSeconds}s</strong></p>
+            <div style="width: 100%; background-color: #e9ecef; border-radius: 4px; height: 6px; margin-top: 10px; overflow:hidden;">
+                <div id="countdown-bar" style="width: 0%; height: 100%; background-color: var(--primary-color); transition: width 1s linear;"></div>
+            </div>
+            <p style="font-size: 12px; color: #999; margin-top: 5px;">Please do not close this window.</p>
+        </div>
+    `;
+    parsedDataContainer.innerHTML = progressHtml;
+
+    // Start Timer
+    const timerInterval = setInterval(() => {
+        remainingSeconds--;
+        if (remainingSeconds < 1) remainingSeconds = 1; // Stuck at 1s if taking longer
+        const percentage = Math.min(100, ((estimatedSeconds - remainingSeconds) / estimatedSeconds) * 100);
+
+        $('#countdown-timer').text(remainingSeconds + 's');
+        $('#countdown-bar').css('width', percentage + '%');
+    }, 1000);
+
     try {
         const results = await apiCall('parse_with_ai', { rawText });
+        clearInterval(timerInterval); // Stop timer
         console.log("AI Parse Results:", results); // Debugging
+
         if (results && results.parses && results.parses.length > 0) {
+            parsedDataContainer.innerHTML = ''; // Clear progress UI
             results.parses.forEach(p => createParcelCard(p)); // AI returns updated keys, createParcelCard handles them
             updateSummary();
 
