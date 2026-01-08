@@ -761,10 +761,11 @@ $parser_instructions_str
 7. **note** (Optional): Instructions.
 
 **Critical Rules:**
-1. **STRICT BLOCK ISOLATION:** Process each block completely independently. Do NOT look at other blocks.
-2. **Missing Fields:** If a block lacks a Phone, Address, OR Price, return NULL (or empty string) for that field. Do NOT infer it from other blocks.
-3. **One Block = One Parcel:** Do not split a block separated by empty lines into multiple parcels.
-4. **Output Format:** Return ONLY a valid JSON array of objects. No markdown formatting. No ```json wrapper.
+1. **PROCESS ALL BLOCKS:** You must output one JSON object for **EVERY** input block, even if incomplete.
+2. **STRICT BLOCK ISOLATION:** Process each block completely independently. Do NOT look at other blocks.
+3. **Missing Fields:** If a block lacks a Mandatory Field (Phone/Address/Price), return NULL (or empty string) for that field. **Do NOT discard the block.**
+4. **Do NOT Infer:** Do NOT copy data from other blocks to fill missing fields.
+5. **Output Format:** Return ONLY a valid JSON array of objects. No markdown formatting. No ```json wrapper.
 
 **Input text to process:**
 ---
