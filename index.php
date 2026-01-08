@@ -203,23 +203,24 @@ if ($isLoggedIn && ($page === 'auth' || $page === 'landing' || $page === '')) {
                 }
                 ?>
                 <a href="<?php echo htmlspecialchars($fbLink); ?>" target="_blank"
-                    style="position:fixed; bottom:90px; left:20px; z-index:9999; background:#0084FF; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
+                    style="position:fixed; bottom:90px; right:20px; z-index:9999; background:#0084FF; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
                     onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
-                    title="Message Us on Facebook">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    title="Message Us on Messenger">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                         <path
-                            d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                            d="M14 0C6.268 0 0 5.662 0 12.648c0 3.982 2.053 7.506 5.289 9.886v4.945l4.825-2.65c1.236.343 2.546.536 3.886.536 7.732 0 14-5.662 14-12.648S21.732 0 14 0zm1.742 16.713L13.06 13.99l-5.36 2.898 5.86-6.216 2.766 2.723 5.28-2.897-5.864 6.215z" />
                     </svg>
                 </a>
             <?php endif; ?>
         <?php else: ?>
             <!-- Fallback if Enabled but No ID: Direct Link to QuantumTechSoft -->
             <a href="https://www.facebook.com/quantumtechsoft" target="_blank"
-                style="position:fixed; bottom:90px; left:20px; z-index:9999; background:#0084FF; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
-                onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="Message Us">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                style="position:fixed; bottom:90px; right:20px; z-index:9999; background:#0084FF; color:white; width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s;"
+                onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
+                title="Message Us on Messenger">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                     <path
-                        d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                        d="M14 0C6.268 0 0 5.662 0 12.648c0 3.982 2.053 7.506 5.289 9.886v4.945l4.825-2.65c1.236.343 2.546.536 3.886.536 7.732 0 14-5.662 14-12.648S21.732 0 14 0zm1.742 16.713L13.06 13.99l-5.36 2.898 5.86-6.216 2.766 2.723 5.28-2.897-5.864 6.215z" />
                 </svg>
             </a>
         <?php endif; ?>
