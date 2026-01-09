@@ -747,15 +747,15 @@ function parseWithAi($user_id, $input, $pdo)
 EOT;
 
     // --- 5. Batch Processing Logic ---
-    $chunk_size = 5; // Reduced to 5 to prevent Output Token Limits / Truncated JSON
+    $chunk_size = 10; // Increased to 10 as requested, using Text-based output for stability
     $chunks = array_chunk($final_blocks, $chunk_size);
     $all_parses = [];
     $total_chunks = count($chunks);
 
-    // Increase execution time for batch processing
+    // Increase execution time 
     set_time_limit(180);
 
-    // Fetch Settings Once
+    // Fetch Settings
     $stmt_settings = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('ai_retry_count', 'admin_error_email', 'app_name')");
     $settings_map = array_column($stmt_settings->fetchAll(), 'setting_value', 'setting_key');
     $retry_count_setting = isset($settings_map['ai_retry_count']) ? (int) $settings_map['ai_retry_count'] : 2;
@@ -765,26 +765,35 @@ EOT;
     foreach ($chunks as $index => $chunk_blocks) {
         $chunk_text = implode("\n\n", $chunk_blocks);
 
-        // Build Prompt for this Chunk
+        // --- NEW TEXT-BASED PROMPT ---
         $prompt = <<<EOT
-You are an API that converts unstructured Bengali/English courier order text into a strict JSON array.
+You are an API that converts unstructured Bengali/English courier order text into a structured text format.
 $parser_instructions_str
 
 **Fields to Extract:**
-1. **recipient_name** (Required): The person's name. If missing, return null.
-2. **recipient_phone** (Required): 11-digit BD Phone (01xxxxxxxxx). Normalize 88017... to 017...
-3. **recipient_address** (Required): Full address.
-4. **cod_amount** (Required): The price/amount (numeric only).
-5. **order_id** (Optional): Any Order ID/Invoice ID found. If NOT found, return NULL.
-6. **item_description** (Optional): Product Name/Description.
-7. **note** (Optional): Instructions.
+- recipient_name
+- recipient_phone (11-digit BD Phone 01xxxxxxxxx)
+- recipient_address (Full address)
+- cod_amount (Numeric price)
+- order_id
+- item_description
+- note
 
 **Critical Rules:**
-1. **PROCESS ALL BLOCKS:** You must output one JSON object for **EVERY** input block, even if incomplete.
-2. **STRICT BLOCK ISOLATION:** Process each block completely independently. Do NOT look at other blocks.
-3. **Missing Fields:** If a block lacks a Mandatory Field (Phone/Address/Price), return NULL (or empty string) for that field. **Do NOT discard the block.**
-4. **Do NOT Infer:** Do NOT copy data from other blocks to fill missing fields.
-5. **Output Format:** Return ONLY a valid JSON array of objects. No markdown formatting. No ```json wrapper.
+1. **PROCESS ALL BLOCKS:** Output one block for **EVERY** input block.
+2. **STRICT BLOCK ISOLATION:** Do not mix data.
+3. **Missing Fields:** If missing, leave the value empty.
+4. **Use '====' Separator:** Separate each parcel block strictly with a line containing only "====".
+5. **Output Format:**
+For each parcel, output exactly these lines:
+Name: <name>
+Phone: <phone>
+Address: <address>
+Price: <amount>
+OID: <order_id>
+Item: <item>
+Note: <note>
+====
 
 **Input text to process:**
 ---
@@ -795,10 +804,10 @@ EOT;
         $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
         $api_body = [
             'contents' => [['parts' => [['text' => $prompt]]]],
-            'generationConfig' => ['responseMimeType' => 'application/json']
+            'generationConfig' => ['responseMimeType' => 'text/plain'] // Changed to text/plain
         ];
 
-        // --- Call Gemini API (Retry Logic for Chunk) ---
+        // --- Call Gemini API (Retry Logic) ---
         $success = false;
         $last_error = '';
 
@@ -816,39 +825,78 @@ EOT;
             curl_close($ch);
 
             if ($http_code === 200 && $response_body) {
-                // Try format
                 $json_data = json_decode($response_body, true);
                 $ai_text_response = $json_data['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
                 if ($ai_text_response) {
-                    // ROBUST JSON EXTRACTION: Find [ ... ]
-                    $startPos = strpos($ai_text_response, '[');
-                    $endPos = strrpos($ai_text_response, ']');
+                    // --- PROGRAMMATIC TEXT PARSING ---
+                    $parsed_result = [];
+                    // Split by separator '===='
+                    $raw_blocks = explode('====', $ai_text_response);
 
-                    if ($startPos !== false && $endPos !== false && $endPos > $startPos) {
-                        $json_candidate = substr($ai_text_response, $startPos, $endPos - $startPos + 1);
-                        $parsed_result = json_decode($json_candidate, true);
+                    foreach ($raw_blocks as $block_str) {
+                        $block_str = trim($block_str);
+                        if (empty($block_str))
+                            continue;
 
-                        if (is_array($parsed_result)) {
-                            $all_parses = array_merge($all_parses, $parsed_result);
-                            $success = true;
-                            break;
-                        } else {
-                            $last_error = "Invalid JSON structure in chunk " . ($index + 1);
-                            // Debug log
-                            file_put_contents('ai_error_log.txt', date('Y-m-d H:i:s') . " - Parse Fail: $json_candidate\n", FILE_APPEND);
+                        $parcel = [
+                            'recipient_name' => null,
+                            'recipient_phone' => null,
+                            'recipient_address' => null,
+                            'cod_amount' => 0,
+                            'order_id' => null,
+                            'item_description' => null,
+                            'note' => null
+                        ];
+
+                        $lines = explode("\n", $block_str);
+                        foreach ($lines as $line) {
+                            $line = trim($line);
+                            if (strpos($line, ':') !== false) {
+                                [$key, $val] = explode(':', $line, 2);
+                                $key = strtolower(trim($key));
+                                $val = trim($val);
+                                if ($val === 'null' || $val === 'N/A')
+                                    $val = null;
+
+                                switch ($key) {
+                                    case 'name':
+                                        $parcel['recipient_name'] = $val;
+                                        break;
+                                    case 'phone':
+                                        $parcel['recipient_phone'] = $val;
+                                        break;
+                                    case 'address':
+                                        $parcel['recipient_address'] = $val;
+                                        break;
+                                    case 'price':
+                                        $parcel['cod_amount'] = (float) preg_replace('/[^0-9.]/', '', $val);
+                                        break;
+                                    case 'oid':
+                                        $parcel['order_id'] = $val;
+                                        break;
+                                    case 'item':
+                                        $parcel['item_description'] = $val;
+                                        break;
+                                    case 'note':
+                                        $parcel['note'] = $val;
+                                        break;
+                                }
+                            }
                         }
+                        // Only add if at least one field is present (to avoid empty separator noise)
+                        if ($parcel['recipient_phone'] || $parcel['recipient_address'] || $parcel['cod_amount']) {
+                            $parsed_result[] = $parcel;
+                        }
+                    }
+
+                    if (!empty($parsed_result)) {
+                        $all_parses = array_merge($all_parses, $parsed_result);
+                        $success = true;
+                        break;
                     } else {
-                        // Fallback attempt: Clean markdown
-                        $clean_json = str_replace(['```json', '```'], '', $ai_text_response);
-                        $parsed_result = json_decode($clean_json, true);
-                        if (is_array($parsed_result)) {
-                            $all_parses = array_merge($all_parses, $parsed_result);
-                            $success = true;
-                            break;
-                        }
-                        $last_error = "Could not locate JSON array [] in chunk " . ($index + 1);
-                        file_put_contents('ai_error_log.txt', date('Y-m-d H:i:s') . " - No Bracket: $ai_text_response\n", FILE_APPEND);
+                        $last_error = "Parsed 0 blocks from text response in chunk " . ($index + 1);
+                        file_put_contents('ai_error_log.txt', date('Y-m-d H:i:s') . " - Text Parse Fail: $ai_text_response\n", FILE_APPEND);
                     }
                 } else {
                     $last_error = "Empty AI response in chunk " . ($index + 1);
