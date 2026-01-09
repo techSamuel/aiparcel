@@ -1269,7 +1269,7 @@ parseWithAIBtn.addEventListener('click', async () => {
     } finally {
         clearInterval(timerInterval);
         loader.style.display = 'none';
-        $('#parseWithAIBtn').prop('disabled', false); // Ensure button checks out
+        $('.parsing-buttons button').prop('disabled', false); // Ensure all buttons are re-enabled
     }
 });
 
