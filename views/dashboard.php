@@ -13,12 +13,7 @@ if (!defined('APP_URL')) {
     }
 
     .parcel-card.invalid-parcel::before {
-        content: '⚠️ Missing Mandatory Fields';
-        display: block;
-        color: #dc3545;
-        font-weight: bold;
-        font-size: 12px;
-        margin-bottom: 5px;
+        display: none;
     }
 
     .courier-badge.redx {

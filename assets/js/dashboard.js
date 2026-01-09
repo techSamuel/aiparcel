@@ -375,10 +375,18 @@ function createParcelCard(parcelData) {
     const isPriceValid = !isNaN(amount) && amount >= 0;
 
     // Check if mandatory fields are missing/invalid
-    const isInvalid = !isPhoneValid || !isAddressValid || !isPriceValid;
+    let missingFields = [];
+    if (!isPhoneValid) missingFields.push('Phone');
+    if (!isAddressValid) missingFields.push('Address');
+    // Price checks
+    if (!isPriceValid) missingFields.push('Price');
+
+    const isInvalid = missingFields.length > 0;
+    let errorHtml = '';
 
     if (isInvalid) {
         card.addClass('invalid-parcel');
+        errorHtml = `<div class="validation-error" style="color:#dc3545; font-weight:bold; font-size:12px; margin-bottom:5px;">⚠️ Missing: ${missingFields.join(', ')}</div>`;
     }
 
     const checkRiskDisabled = !isPhoneValid || !userPermissions.can_check_risk;
@@ -420,6 +428,7 @@ function createParcelCard(parcelData) {
 
     card.html(`
         <div class="details">
+            ${errorHtml}
             <div style="font-weight:bold; margin-bottom:2px;">${customerName} <span style="font-weight:normal;">(${phone})</span></div>
             <div style="margin-bottom:4px;">Address: <span class="address-text">${address}</span></div>
             <div style="font-size:0.9em; color:#555;">
