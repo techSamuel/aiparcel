@@ -746,8 +746,27 @@ function parseWithAi($user_id, $input, $pdo)
 7. **note** (Optional): Instructions.
 EOT;
 
-    // --- 4. Build prompt ---
-    $prompt = <<<EOT
+    // --- 5. Batch Processing Logic ---
+    $chunk_size = 15; // Process 15 parcels per batch to ensure reliability
+    $chunks = array_chunk($final_blocks, $chunk_size);
+    $all_parses = [];
+    $total_chunks = count($chunks);
+
+    // Increase execution time for batch processing
+    set_time_limit(180);
+
+    // Fetch Settings Once
+    $stmt_settings = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('ai_retry_count', 'admin_error_email', 'app_name')");
+    $settings_map = array_column($stmt_settings->fetchAll(), 'setting_value', 'setting_key');
+    $retry_count_setting = isset($settings_map['ai_retry_count']) ? (int) $settings_map['ai_retry_count'] : 2;
+    $admin_email = $settings_map['admin_error_email'] ?? '';
+    $app_name = $settings_map['app_name'] ?? 'CourierPlus';
+
+    foreach ($chunks as $index => $chunk_blocks) {
+        $chunk_text = implode("\n\n", $chunk_blocks);
+
+        // Build Prompt for this Chunk
+        $prompt = <<<EOT
 You are an API that converts unstructured Bengali/English courier order text into a strict JSON array.
 $parser_instructions_str
 
@@ -769,102 +788,96 @@ $parser_instructions_str
 
 **Input text to process:**
 ---
-$raw_text
+$chunk_text
 ---
 EOT;
 
-    $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
-    $api_body = [
-        'contents' => [['parts' => [['text' => $prompt]]]],
-        'generationConfig' => ['responseMimeType' => 'application/json']
-    ];
+        $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
+        $api_body = [
+            'contents' => [['parts' => [['text' => $prompt]]]],
+            'generationConfig' => ['responseMimeType' => 'application/json']
+        ];
 
-    // --- 5. Call Gemini API (Retry Logic) ---
-    // Retry Loop
-    $stmt_settings = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('ai_retry_count', 'admin_error_email', 'app_name')");
-    $settings_map = array_column($stmt_settings->fetchAll(), 'setting_value', 'setting_key');
-    $retry_count = isset($settings_map['ai_retry_count']) ? (int) $settings_map['ai_retry_count'] : 2;
-    $admin_email = $settings_map['admin_error_email'] ?? '';
-    $app_name = $settings_map['app_name'] ?? 'CourierPlus';
+        // --- Call Gemini API (Retry Logic for Chunk) ---
+        $success = false;
+        $last_error = '';
 
-    $success = false;
-    $last_error = '';
-    $response_body = false;
-    $http_code = 0;
+        for ($attempt = 0; $attempt <= $retry_count_setting; $attempt++) {
+            $ch = curl_init($api_url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($api_body));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
 
-    for ($attempt = 0; $attempt <= $retry_count; $attempt++) {
-        $ch = curl_init($api_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($api_body));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            $response_body = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            curl_close($ch);
 
-        $response_body = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
-        curl_close($ch);
+            if ($http_code === 200 && $response_body) {
+                // Try format
+                $json_data = json_decode($response_body, true);
+                $ai_text_response = $json_data['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
-        if ($http_code === 200 && $response_body) {
-            // Try to parse the response immediately
-            $json_data = json_decode($response_body, true);
-            $ai_text_response = $json_data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                if ($ai_text_response) {
+                    $clean_json = str_replace(['```json', '```'], '', $ai_text_response);
+                    $parsed_result = json_decode($clean_json, true);
 
-            if ($ai_text_response) {
-                // Clean markdown
-                $clean_json = str_replace(['```json', '```'], '', $ai_text_response);
-                // Attempt to parse the cleaned JSON
-                $parsed_result = json_decode($clean_json, true);
-
-                if (is_array($parsed_result)) {
-                    $all_parses = $parsed_result;
-                    $success = true;
-                    break; // Valid JSON obtained, exit loop
+                    if (is_array($parsed_result)) {
+                        $all_parses = array_merge($all_parses, $parsed_result);
+                        $success = true;
+                        break;
+                    } else {
+                        $last_error = "Invalid JSON from AI (Attempt $attempt) in chunk " . ($index + 1) . ": Parsing failed.";
+                    }
                 } else {
-                    $last_error = "Invalid JSON from AI (Attempt $attempt): Parsing failed.";
+                    $last_error = "Empty response from AI candidates (Attempt $attempt) in chunk " . ($index + 1) . ".";
                 }
             } else {
-                $last_error = "Empty response from AI candidates (Attempt $attempt).";
+                $last_error = "HTTP $http_code: " . ($curl_error ?: $response_body);
             }
-        } else {
-            $last_error = "HTTP $http_code: " . ($curl_error ?: $response_body);
+
+            if ($attempt < $retry_count_setting)
+                sleep(1);
         }
 
-        if ($attempt < $retry_count) {
-            sleep(1);
+        if (!$success) {
+            // If one chunk fails, the user loses data. Better to fail hard & alert.
+            // OR returns partial data with error? 
+            // Let's return error for now to ensure integrity.
+            // --- SEND ALERT EMAIL TO ADMIN ---
+            if (!empty($admin_email)) {
+                require_once 'src/Exception.php';
+                require_once 'src/PHPMailer.php';
+                require_once 'src/SMTP.php';
+                $mail = new PHPMailer\PHPMailer(true);
+                try {
+                    $mail->isSMTP();
+                    $mail->Host = SMTP_HOST;
+                    $mail->SMTPAuth = true;
+                    $mail->Username = SMTP_USER;
+                    $mail->Password = SMTP_PASS;
+                    $mail->SMTPSecure = (SMTP_SECURE === 'tls') ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+                    $mail->Port = SMTP_PORT;
+
+                    $mail->setFrom(SMTP_FROM_EMAIL, $app_name . ' System');
+                    $mail->addAddress($admin_email);
+                    $mail->isHTML(true);
+                    $mail->Subject = 'URGENT: AI Parsing Failed on ' . $app_name;
+                    $mail->Body = "<h3>AI Parsing Failure Alert</h3><p>Last Error: $last_error</p>";
+                    $mail->send();
+                } catch (Exception $e) {
+                }
+            }
+            json_response(['error' => "Batch Processing Failed at Chunk " . ($index + 1) . ". $last_error"], 500);
         }
     }
 
-    if (!$success) {
-        // --- SEND ALERT EMAIL TO ADMIN ---
-        if (!empty($admin_email)) {
-            require_once 'src/Exception.php';
-            require_once 'src/PHPMailer.php';
-            require_once 'src/SMTP.php';
-            $mail = new PHPMailer\PHPMailer(true);
-            try {
-                $mail->isSMTP();
-                $mail->Host = SMTP_HOST;
-                $mail->SMTPAuth = true;
-                $mail->Username = SMTP_USER;
-                $mail->Password = SMTP_PASS;
-                $mail->SMTPSecure = (SMTP_SECURE === 'tls') ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
-                $mail->Port = SMTP_PORT;
-
-                $mail->setFrom(SMTP_FROM_EMAIL, $app_name . ' System');
-                $mail->addAddress($admin_email);
-                $mail->isHTML(true);
-                $mail->Subject = 'URGENT: AI Parsing Failed on ' . $app_name;
-                $mail->Body = "<h3>AI Parsing Failure Alert</h3><p>Last Error: $last_error</p>";
-                $mail->send();
-            } catch (Exception $e) {
-            }
-        }
-        json_response(['error' => "AI Processing Failed. $last_error"], 500);
+    // --- 6. Handle Response Data ---
+    if (empty($all_parses)) {
+        json_response(['error' => "AI Processing Failed. No data extracted."], 500);
     }
-
-    // No need to re-parse, we have $all_parses from the loop
-    // Lines 846-860 are effectively replaced/handled above
 
     // --- 7. Post-Processing & Update Usage ---
     foreach ($all_parses as &$parse) {
@@ -887,14 +900,11 @@ EOT;
     if ($effective_ai_limit > 0) {
         $new_ai_usage = $user_data['monthly_ai_parsed_count'] + $count;
         $ai_percent = ($new_ai_usage / $effective_ai_limit) * 100;
-        $alert_subject = '';
         $alert_col = '';
 
         if ($ai_percent >= 90 && empty($user_data['alert_usage_ai_90'])) {
-            $alert_subject = "Action Required: 90% AI Limit Reached";
             $alert_col = 'alert_usage_ai_90';
         } elseif ($ai_percent >= 75 && empty($user_data['alert_usage_ai_75'])) {
-            $alert_subject = "Usage Alert: 75% AI Limit Reached";
             $alert_col = 'alert_usage_ai_75';
         }
 
