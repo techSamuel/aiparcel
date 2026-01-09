@@ -891,9 +891,23 @@ EOT;
                     }
 
                     if (!empty($parsed_result)) {
-                        $all_parses = array_merge($all_parses, $parsed_result);
-                        $success = true;
-                        break;
+                        // --- SANITY CHECK: Input vs Output Count ---
+                        // If we sent 10 blocks but got fewer than 10 parsed results, something might be wrong.
+                        // We'll enforce a strict rule: Output count must match Input count.
+                        // If not, we treat it as a failure and RETRY (unless it's the last attempt, then we take what we got).
+
+                        $input_count = count($chunk_blocks);
+                        $output_count = count($parsed_result);
+
+                        if ($output_count < $input_count && $attempt < $retry_count_setting) {
+                            $last_error = "Mismatch: Sent $input_count parcels, AI returned $output_count. Retrying for completeness.";
+                            // Fall through to retry logic
+                        } else {
+                            // Success or Last Attempt (Accept partial data)
+                            $all_parses = array_merge($all_parses, $parsed_result);
+                            $success = true;
+                            break;
+                        }
                     } else {
                         $last_error = "Parsed 0 blocks from text response in chunk " . ($index + 1);
                         file_put_contents('ai_error_log.txt', date('Y-m-d H:i:s') . " - Text Parse Fail: $ai_text_response\n", FILE_APPEND);
