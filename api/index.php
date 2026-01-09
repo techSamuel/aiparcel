@@ -756,7 +756,7 @@ $parser_instructions_str
 2. **recipient_phone** (Required): 11-digit BD Phone (01xxxxxxxxx). Normalize 88017... to 017...
 3. **recipient_address** (Required): Full address (include Thana/District if found).
 4. **cod_amount** (Required): The price/amount (numeric only).
-5. **order_id** (Optional): Any Order ID/Invoice ID found. If NOT found, generate a random 6-digit number string.
+5. **order_id** (Optional): Any Order ID/Invoice ID found. If NOT found, return NULL.
 6. **item_description** (Optional): Product Name/Description.
 7. **note** (Optional): Instructions.
 
@@ -859,7 +859,15 @@ EOT;
         json_response(['error' => "AI Processing Failed. $last_error"], 500);
     }
 
-    // --- 7. Update Usage & Alerts ---
+    // --- 7. Post-Processing & Update Usage ---
+    foreach ($all_parses as &$parse) {
+        // Ensure random 8-digit integer for missing Order IDs
+        if (empty($parse['order_id'])) {
+            $parse['order_id'] = mt_rand(10000000, 99999999);
+        }
+    }
+    unset($parse); // Break reference
+
     $count = count($all_parses);
     $pdo->prepare("UPDATE users SET monthly_ai_parsed_count = monthly_ai_parsed_count + ? WHERE id = ?")->execute([$count, $user_id]);
 
