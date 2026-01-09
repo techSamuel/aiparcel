@@ -2570,12 +2570,40 @@ function correct_single_address_with_ai($user_id, $input, $pdo)
     // --- END OF MODIFICATION ---
 
     $address = $input['address'] ?? '';
-    if (empty(trim($address))) {
+    $clean_input_address = trim($address);
+
+    if (empty($clean_input_address)) {
         json_response(['error' => 'No address was provided for correction.'], 400);
     }
 
+    // --- BACKEND PROTECTION: Deduplication / Caching ---
+    // 1. Ensure Table Exists
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS ai_address_corrections (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT,
+            address_hash VARCHAR(64),
+            original_address TEXT,
+            corrected_address TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_hash (user_id, address_hash)
+        )");
+    } catch (Exception $e) {
+    }
+
+    // 2. Check for recent cached correction (e.g., last 30 days)
+    $address_hash = hash('sha256', mb_strtolower($clean_input_address)); // Normalize case
+    $stmt_check = $pdo->prepare("SELECT corrected_address FROM ai_address_corrections WHERE user_id = ? AND address_hash = ? AND created_at > (NOW() - INTERVAL 30 DAY) LIMIT 1");
+    $stmt_check->execute([$user_id, $address_hash]);
+    $cached_address = $stmt_check->fetchColumn();
+
+    if ($cached_address) {
+        // Return cached result immediately (No AI usage, No cost)
+        json_response(['corrected_address' => $cached_address, 'cached' => true]);
+    }
+
     // 3. Refined prompt for a single address
-    $prompt = "You are an expert address corrector for Bangladesh. Your task is to correct and complete the following address. Format the output as a single, clean line: Full Address, Thana/Upazila, District. Do not add any extra text, labels, or markdown formatting. Just return the corrected address string. The input language can be English or Bengali; match the output language to the input language.\n\nInput Address: \"" . $address . "\"\n\nCorrected Address:";
+    $prompt = "You are an expert address corrector for Bangladesh. Your task is to correct and complete the following address. Format the output as a single, clean line: Full Address, Thana/Upazila, District. Do not add any extra text, labels, or markdown formatting. Just return the corrected address string. The input language can be English or Bengali; match the output language to the input language.\n\nInput Address: \"" . $clean_input_address . "\"\n\nCorrected Address:";
 
     $api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' . $gemini_api_key;
     $api_body = ['contents' => [['parts' => [['text' => $prompt]]]]];
@@ -2608,9 +2636,17 @@ function correct_single_address_with_ai($user_id, $input, $pdo)
     $corrected_address = $response_data['candidates'][0]['content']['parts'][0]['text'] ?? null;
 
     if ($corrected_address) {
-        // Clean up the response, removing potential markdown, labels, or extra newlines.
+        // Clean up the response
         $cleaned_address = trim(str_replace(['`', '*', '\n', 'Corrected Address:', 'Address:'], '', $corrected_address));
-        json_response(['corrected_address' => $cleaned_address]);
+
+        // --- SAVE TO CACHE ---
+        try {
+            $stmt_save = $pdo->prepare("INSERT INTO ai_address_corrections (user_id, address_hash, original_address, corrected_address) VALUES (?, ?, ?, ?)");
+            $stmt_save->execute([$user_id, $address_hash, $clean_input_address, $cleaned_address]);
+        } catch (Exception $e) {
+        }
+
+        json_response(['corrected_address' => $cleaned_address, 'cached' => false]);
     } else {
         json_response(['error' => 'Failed to parse corrected address from AI response.'], 500);
     }
