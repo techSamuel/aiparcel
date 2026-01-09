@@ -747,7 +747,7 @@ function parseWithAi($user_id, $input, $pdo)
 EOT;
 
     // --- 5. Batch Processing Logic ---
-    $chunk_size = 15; // Process 15 parcels per batch to ensure reliability
+    $chunk_size = 5; // Reduced to 5 to prevent Output Token Limits / Truncated JSON
     $chunks = array_chunk($final_blocks, $chunk_size);
     $all_parses = [];
     $total_chunks = count($chunks);
@@ -773,7 +773,7 @@ $parser_instructions_str
 **Fields to Extract:**
 1. **recipient_name** (Required): The person's name. If missing, return null.
 2. **recipient_phone** (Required): 11-digit BD Phone (01xxxxxxxxx). Normalize 88017... to 017...
-3. **recipient_address** (Required): Full address (include Thana/District if found).
+3. **recipient_address** (Required): Full address.
 4. **cod_amount** (Required): The price/amount (numeric only).
 5. **order_id** (Optional): Any Order ID/Invoice ID found. If NOT found, return NULL.
 6. **item_description** (Optional): Product Name/Description.
@@ -821,18 +821,37 @@ EOT;
                 $ai_text_response = $json_data['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
                 if ($ai_text_response) {
-                    $clean_json = str_replace(['```json', '```'], '', $ai_text_response);
-                    $parsed_result = json_decode($clean_json, true);
+                    // ROBUST JSON EXTRACTION: Find [ ... ]
+                    $startPos = strpos($ai_text_response, '[');
+                    $endPos = strrpos($ai_text_response, ']');
 
-                    if (is_array($parsed_result)) {
-                        $all_parses = array_merge($all_parses, $parsed_result);
-                        $success = true;
-                        break;
+                    if ($startPos !== false && $endPos !== false && $endPos > $startPos) {
+                        $json_candidate = substr($ai_text_response, $startPos, $endPos - $startPos + 1);
+                        $parsed_result = json_decode($json_candidate, true);
+
+                        if (is_array($parsed_result)) {
+                            $all_parses = array_merge($all_parses, $parsed_result);
+                            $success = true;
+                            break;
+                        } else {
+                            $last_error = "Invalid JSON structure in chunk " . ($index + 1);
+                            // Debug log
+                            file_put_contents('ai_error_log.txt', date('Y-m-d H:i:s') . " - Parse Fail: $json_candidate\n", FILE_APPEND);
+                        }
                     } else {
-                        $last_error = "Invalid JSON from AI (Attempt $attempt) in chunk " . ($index + 1) . ": Parsing failed.";
+                        // Fallback attempt: Clean markdown
+                        $clean_json = str_replace(['```json', '```'], '', $ai_text_response);
+                        $parsed_result = json_decode($clean_json, true);
+                        if (is_array($parsed_result)) {
+                            $all_parses = array_merge($all_parses, $parsed_result);
+                            $success = true;
+                            break;
+                        }
+                        $last_error = "Could not locate JSON array [] in chunk " . ($index + 1);
+                        file_put_contents('ai_error_log.txt', date('Y-m-d H:i:s') . " - No Bracket: $ai_text_response\n", FILE_APPEND);
                     }
                 } else {
-                    $last_error = "Empty response from AI candidates (Attempt $attempt) in chunk " . ($index + 1) . ".";
+                    $last_error = "Empty AI response in chunk " . ($index + 1);
                 }
             } else {
                 $last_error = "HTTP $http_code: " . ($curl_error ?: $response_body);
@@ -844,7 +863,7 @@ EOT;
 
         if (!$success) {
             // If one chunk fails, the user loses data. Better to fail hard & alert.
-            // OR returns partial data with error? 
+            // OR returns partial data with error?
             // Let's return error for now to ensure integrity.
             // --- SEND ALERT EMAIL TO ADMIN ---
             if (!empty($admin_email)) {
