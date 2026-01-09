@@ -817,7 +817,7 @@ EOT;
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($api_body));
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 90); // Increased timeout to 90s for better stability
 
             $response_body = curl_exec($ch);
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -905,8 +905,9 @@ EOT;
                 $last_error = "HTTP $http_code: " . ($curl_error ?: $response_body);
             }
 
-            if ($attempt < $retry_count_setting)
-                sleep(1);
+            if ($attempt < $retry_count_setting) {
+                sleep(pow(2, $attempt)); // Exponential backoff: 1s, 2s, 4s...
+            }
         }
 
         if (!$success) {
