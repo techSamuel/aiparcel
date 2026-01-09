@@ -391,8 +391,12 @@ function createParcelCard(parcelData) {
 
     const checkRiskDisabled = !isPhoneValid || !userPermissions.can_check_risk;
     const checkRiskTitle = !userPermissions.can_check_risk ? 'This is a premium feature.' : 'Check customer risk';
-    const correctAddressDisabled = !userPermissions.can_correct_address;
-    const correctAddressTitle = !userPermissions.can_correct_address ? 'This is a premium feature.' : 'Correct Address With AI';
+
+    // Correct Address Button State
+    const isCorrected = parcelData.ai_address_corrected === true;
+    const correctAddressDisabled = !userPermissions.can_correct_address || isCorrected;
+    const correctAddressTitle = !userPermissions.can_correct_address ? 'This is a premium feature.' : (isCorrected ? 'Address already corrected by AI' : 'Correct Address With AI');
+    const correctAddressText = isCorrected ? 'Corrected ✔️' : 'Correct Address With AI';
 
     // Check for duplicate order
     const duplicateInfo = duplicatePhoneData[phone];
@@ -442,7 +446,7 @@ function createParcelCard(parcelData) {
         </div>
         <div class="parcel-actions">
             <button class="check-risk-btn" data-phone="${phoneForCheck}" ${checkRiskDisabled ? 'disabled' : ''} title="${checkRiskTitle}">Check Risk</button>
-            <button class="correct-address-btn" ${correctAddressDisabled ? 'disabled' : ''} title="${correctAddressTitle}">Correct Address With AI</button>
+            <button class="correct-address-btn" ${correctAddressDisabled ? 'disabled' : ''} title="${correctAddressTitle}">${correctAddressText}</button>
             <button class="edit-btn" title="Edit Details">Edit ✏️</button>
             <button class="remove-btn">&times;</button>
         </div>
@@ -606,9 +610,13 @@ async function correctSingleAddress(buttonElement) {
         const result = await apiCall('correct_address_ai', { address: originalAddress });
         if (result.corrected_address) {
             parcelData[addressKey] = result.corrected_address;
-            $card.data('orderData', JSON.stringify(parcelData));
+            parcelData.ai_address_corrected = true; // Mark as corrected
+            $card.attr('data-order-data', JSON.stringify(parcelData)); // Update attr
+            $card.data('orderData', JSON.stringify(parcelData)); // Update data
             $addressTextSpan.text(result.corrected_address);
+
             $button.text('Corrected ✔️');
+            // Button remains disabled naturally since we don't re-enable it on success
 
             // Re-validate after correction
             const address = result.corrected_address;
@@ -618,12 +626,18 @@ async function correctSingleAddress(buttonElement) {
             const phoneForCheck = (parcelData.recipient_phone || parcelData.phone || parcelData.customerPhone || '').replace(/\s+/g, '');
             const isPhoneValid = /^01[3-9]\d{8}$/.test(phoneForCheck);
             const amount = parseFloat(parcelData.cod_amount || parcelData.amount || 0);
-            const isPriceValid = !isNaN(amount) && amount > 0;
+            const isPriceValid = !isNaN(amount) && amount >= 0;
 
-            if (isAddressValid && isPhoneValid && isPriceValid) {
+            let missingFields = [];
+            if (!isPhoneValid) missingFields.push('Phone');
+            if (!isAddressValid) missingFields.push('Address');
+            if (!isPriceValid) missingFields.push('Price');
+
+            if (missingFields.length === 0) {
                 $card.removeClass('invalid-parcel');
-            } else {
-                // Keep it invalid (maybe phone/price are also bad)
+                // Also hide dynamic error if any (re-rendering might be cleaner, but simple class toggle works for border)
+                // Ideally we should re-call logic but since createParcelCard is complex, let's just create a helper or trust re-validation
+                $card.find('.validation-error').remove();
             }
             validateAllParcels();
 
@@ -631,8 +645,8 @@ async function correctSingleAddress(buttonElement) {
     } catch (error) {
         alert(`Error correcting address: ${error.message}`);
         $button.text('Correction Failed');
-    } finally {
-        setTimeout(() => { $button.prop('disabled', false).html('Correct Address 🤖'); }, 3000);
+        // Re-enable only on error
+        setTimeout(() => { $button.prop('disabled', false).html('Correct Address With AI'); }, 3000);
     }
 }
 
