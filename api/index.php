@@ -747,7 +747,7 @@ function parseWithAi($user_id, $input, $pdo)
 EOT;
 
     // --- 5. Batch Processing Logic ---
-    $chunk_size = 10; // Increased to 10 as requested, using Text-based output for stability
+    $chunk_size = 20; // Increased to 20 as requested. (Adaptive: 5->5, 50->20+20+10)
     $chunks = array_chunk($final_blocks, $chunk_size);
     $all_parses = [];
     $total_chunks = count($chunks);
