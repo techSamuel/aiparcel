@@ -295,6 +295,22 @@ if (!defined('APP_URL')) {
     </div>
 </div>
 
+<!-- Retry Modal -->
+<div id="retry-modal" class="modal">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <div class="modal-header" style="justify-content: center; border:none; padding-bottom:0;">
+            <h2 style="color: #e74c3c;">⚠️ AI Processing Error</h2>
+        </div>
+        <p id="retry-error-msg" style="margin: 15px 0; color: #555; line-height: 1.5;">Server response was not valid. Do
+            you want to try again?</p>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+            <button id="cancel-retry-btn" class="secondary-btn" style="padding: 10px 20px;">Cancel</button>
+            <button id="confirm-retry-btn" class="primary-btn"
+                style="background: #e74c3c; border-color: #e74c3c; padding: 10px 20px;">Retry Now ↻</button>
+        </div>
+    </div>
+</div>
+
 
 
 

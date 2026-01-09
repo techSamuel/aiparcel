@@ -1238,6 +1238,8 @@ parseWithAIBtn.addEventListener('click', async () => {
         $('#countdown-bar').css('width', percentage + '%');
     }, 1000);
 
+
+    // ... existing timer code ...
     try {
         const results = await apiCall('parse_with_ai', { rawText });
         clearInterval(timerInterval); // Stop timer
@@ -1245,7 +1247,7 @@ parseWithAIBtn.addEventListener('click', async () => {
 
         if (results && results.parses && results.parses.length > 0) {
             parsedDataContainer.innerHTML = ''; // Clear progress UI
-            results.parses.forEach(p => createParcelCard(p)); // AI returns updated keys, createParcelCard handles them
+            results.parses.forEach(p => createParcelCard(p));
             updateSummary();
 
             // Check for duplicates after rendering
@@ -1256,26 +1258,55 @@ parseWithAIBtn.addEventListener('click', async () => {
                 applyCustomNoteToAll(true); // silent mode
             }
 
-            // Refresh Plan Usage Stats (Progress Bar & Counts)
+            // Refresh Plan Usage Stats
             await renderPlanStatus();
         } else {
-            alert('AI could not parse the text.');
+            showRetryModal('AI returned no data. Please try again.');
         }
     } catch (e) {
-        alert(e.message || "An error occurred during AI parsing.");
-        // If error, clear the progress UI so user can try again
-        parsedDataContainer.innerHTML = '';
+        // Show Retry Modal instead of Alert
+        showRetryModal(e.message || "An error occurred during AI parsing. Please check your connection and try again.");
     } finally {
-        clearInterval(timerInterval); // ALWAYS stop the timer
+        clearInterval(timerInterval);
         loader.style.display = 'none';
-        $('.parsing-buttons button').prop('disabled', false);
-
-        // Final sanity check: if container still has progress bar but no data, clear it
-        if (parsedDataContainer.innerHTML.includes('parsing-progress')) {
-            parsedDataContainer.innerHTML = '';
-        }
+        $('#parseWithAIBtn').prop('disabled', false); // Ensure button checks out
     }
 });
+
+// --- Retry Modal Logic ---
+let currentRawTextForRetry = ''; // Global var to store text for retry
+
+function showRetryModal(msg) {
+    const modal = document.getElementById('retry-modal');
+    const msgElem = document.getElementById('retry-error-msg');
+
+    // Store current input for retry reference
+    currentRawTextForRetry = document.getElementById('rawText').value;
+
+    if (msgElem) msgElem.innerText = msg;
+    if (modal) {
+        modal.style.display = 'block';
+        setTimeout(() => modal.classList.add('show'), 10); // Check if css has transition
+    }
+}
+
+// Bind Retry Modal Buttons (Run once on load)
+$(document).ready(function () {
+    $('#cancel-retry-btn').on('click', function () {
+        $('#retry-modal').removeClass('show').hide();
+        // Clear progress container to reset state
+        document.getElementById('parsedDataContainer').innerHTML = '';
+    });
+
+    $('#confirm-retry-btn').on('click', function () {
+        $('#retry-modal').removeClass('show').hide();
+        // Trigger the parsing button again
+        // Ensure rawText matches what we failed on, just in case user changed it (unlikely but safe)
+        $('#rawText').val(currentRawTextForRetry);
+        $('#parseWithAIBtn').click();
+    });
+});
+
 
 // Check for duplicate phone numbers and mark parcel cards
 async function checkAndMarkDuplicates() {
