@@ -910,10 +910,13 @@ EOT;
         }
 
         if (!$success) {
-            // If one chunk fails, the user loses data. Better to fail hard & alert.
-            // OR returns partial data with error?
-            // Let's return error for now to ensure integrity.
-            // --- SEND ALERT EMAIL TO ADMIN ---
+            // --- PARTIAL SUCCESS LOGIC ---
+            // Instead of failing HARD (500), we log the error and CONTINUE to the next chunk.
+            // This ensures mapped data is not lost if one batch fails.
+            $error_msg = "Batch Processing Failed at Chunk " . ($index + 1) . ". $last_error";
+            file_put_contents('ai_error_log.txt', date('Y-m-d H:i:s') . " - $error_msg\n", FILE_APPEND);
+
+            // Optional: Notify Admin via Email (Silent Background)
             if (!empty($admin_email)) {
                 require_once 'src/Exception.php';
                 require_once 'src/PHPMailer.php';
@@ -931,19 +934,21 @@ EOT;
                     $mail->setFrom(SMTP_FROM_EMAIL, $app_name . ' System');
                     $mail->addAddress($admin_email);
                     $mail->isHTML(true);
-                    $mail->Subject = 'URGENT: AI Parsing Failed on ' . $app_name;
-                    $mail->Body = "<h3>AI Parsing Failure Alert</h3><p>Last Error: $last_error</p>";
+                    $mail->Subject = 'URGENT: AI Parsing Chunk Failed on ' . $app_name;
+                    $mail->Body = "<h3>Partial Failure Alert</h3><p>$error_msg</p>";
                     $mail->send();
                 } catch (Exception $e) {
                 }
             }
-            json_response(['error' => "Batch Processing Failed at Chunk " . ($index + 1) . ". $last_error"], 500);
+            // CONTINUING TO NEXT CHUNK
+            continue;
         }
     }
 
     // --- 6. Handle Response Data ---
     if (empty($all_parses)) {
-        json_response(['error' => "AI Processing Failed. No data extracted."], 500);
+        // If ALL chunks failed, then we return error.
+        json_response(['error' => "AI Processing Failed. No data could be extracted from any batch. Last Error: $last_error"], 500);
     }
 
     // --- 7. Post-Processing & Update Usage ---
