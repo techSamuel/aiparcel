@@ -806,13 +806,33 @@ EOT;
         curl_close($ch);
 
         if ($http_code === 200 && $response_body) {
-            $success = true;
-            break;
+            // Try to parse the response immediately
+            $json_data = json_decode($response_body, true);
+            $ai_text_response = $json_data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+
+            if ($ai_text_response) {
+                // Clean markdown
+                $clean_json = str_replace(['```json', '```'], '', $ai_text_response);
+                // Attempt to parse the cleaned JSON
+                $parsed_result = json_decode($clean_json, true);
+
+                if (is_array($parsed_result)) {
+                    $all_parses = $parsed_result;
+                    $success = true;
+                    break; // Valid JSON obtained, exit loop
+                } else {
+                    $last_error = "Invalid JSON from AI (Attempt $attempt): Parsing failed.";
+                }
+            } else {
+                $last_error = "Empty response from AI candidates (Attempt $attempt).";
+            }
+        } else {
+            $last_error = "HTTP $http_code: " . ($curl_error ?: $response_body);
         }
 
-        if ($attempt < $retry_count)
+        if ($attempt < $retry_count) {
             sleep(1);
-        $last_error = "HTTP $http_code: " . ($curl_error ?: $response_body);
+        }
     }
 
     if (!$success) {
@@ -835,29 +855,16 @@ EOT;
                 $mail->addAddress($admin_email);
                 $mail->isHTML(true);
                 $mail->Subject = 'URGENT: AI Parsing Failed on ' . $app_name;
-                $mail->Body = "<h3>AI Parsing Failure Alert</h3><p>Http Code: $http_code</p><p>$curl_error</p>";
+                $mail->Body = "<h3>AI Parsing Failure Alert</h3><p>Last Error: $last_error</p>";
                 $mail->send();
             } catch (Exception $e) {
             }
         }
-        json_response(['error' => "Gemini API Error. $last_error"], 500);
-    }
-
-    $all_parses = [];
-    $json_data = json_decode($response_body, true);
-    $ai_text_response = $json_data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
-    $clean_json = str_replace(['```json', '```'], '', $ai_text_response);
-    $all_parses = json_decode($clean_json, true);
-
-    if (!is_array($all_parses)) {
-        json_response(['error' => 'Invalid JSON from AI'], 500);
-    }
-
-    // --- 6. Handle Response Data ---
-    if (empty($all_parses)) {
-        // Only if ALL batches failed completely without even generating error cards (unlikely)
         json_response(['error' => "AI Processing Failed. $last_error"], 500);
     }
+
+    // No need to re-parse, we have $all_parses from the loop
+    // Lines 846-860 are effectively replaced/handled above
 
     // --- 7. Post-Processing & Update Usage ---
     foreach ($all_parses as &$parse) {
