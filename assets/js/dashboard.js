@@ -370,9 +370,9 @@ function createParcelCard(parcelData) {
     const phoneForCheck = (phone || '').replace(/\s+/g, '');
     const isPhoneValid = /^01[3-9]\d{8}$/.test(phoneForCheck);
 
-    // Strict Validation: Phone, Address, Price, and Name (implicitly handled by default)
+    // Strict Validation: Phone, Address and Name (Price can be 0 now)
     const isAddressValid = address && address !== 'N/A' && address !== 'null' && address.length > 5;
-    const isPriceValid = !isNaN(amount) && amount > 0;
+    const isPriceValid = !isNaN(amount) && amount >= 0;
 
     // Check if mandatory fields are missing/invalid
     const isInvalid = !isPhoneValid || !isAddressValid || !isPriceValid;
@@ -384,7 +384,7 @@ function createParcelCard(parcelData) {
     const checkRiskDisabled = !isPhoneValid || !userPermissions.can_check_risk;
     const checkRiskTitle = !userPermissions.can_check_risk ? 'This is a premium feature.' : 'Check customer risk';
     const correctAddressDisabled = !userPermissions.can_correct_address;
-    const correctAddressTitle = !userPermissions.can_correct_address ? 'This is a premium feature.' : 'Correct Address with AI';
+    const correctAddressTitle = !userPermissions.can_correct_address ? 'This is a premium feature.' : 'Correct Address With AI';
 
     // Check for duplicate order
     const duplicateInfo = duplicatePhoneData[phone];
@@ -412,6 +412,12 @@ function createParcelCard(parcelData) {
         }
     }
 
+    // Checking for 0 COD Warning
+    let codWarningHtml = '';
+    if (amount === 0) {
+        codWarningHtml = `<div style="color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; padding: 4px; margin-top: 4px; border-radius: 4px; font-size: 0.85em; display: inline-block;">⚠️ Warning: COD is set to 0</div>`;
+    }
+
     card.html(`
         <div class="details">
             <div style="font-weight:bold; margin-bottom:2px;">${customerName} <span style="font-weight:normal;">(${phone})</span></div>
@@ -419,6 +425,7 @@ function createParcelCard(parcelData) {
             <div style="font-size:0.9em; color:#555;">
                 OID: ${orderId} | COD: <strong>${amount} BDT</strong> | Item: ${productName}
             </div>
+            ${codWarningHtml}
             <div style="margin-top: 5px;">
                 <input type="text" class="input-note" value="${note !== 'N/A' ? note : ''}" placeholder="Add Note..." style="width: 100%; border: 1px solid #ddd; padding: 4px; font-size: 12px; border-radius: 4px;">
             </div>

@@ -865,6 +865,11 @@ EOT;
         if (empty($parse['order_id'])) {
             $parse['order_id'] = mt_rand(10000000, 99999999);
         }
+
+        // Default COD to 0 if missing (User wants to result in Warning, not Error on frontend)
+        if (!isset($parse['cod_amount']) || $parse['cod_amount'] === null || $parse['cod_amount'] === '') {
+            $parse['cod_amount'] = 0;
+        }
     }
     unset($parse); // Break reference
 
