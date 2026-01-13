@@ -1061,10 +1061,28 @@ async function loadHistory(type, container) {
             if (type === 'parses') title = `Method: ${item.method} | ${safeParse(item.data).length || 0} items`;
             else title = `Store: ${userCourierStores[item.store_id]?.storeName || 'N/A'}`;
 
-            // Escape single quotes for HTML attribute
-            const safeItemStr = JSON.stringify(item).replace(/'/g, "&apos;");
+            // Escape single quotes not needed if using the new renderer which accepts raw JSON string
+            // But we pass the whole object for orders, or data for parses
+            let detailsBtn = '';
 
-            $(container).append(`<div class="history-item"><div><p>${date}</p><p><strong>${title}</strong></p></div><button class="details-btn" data-type="${type}" data-item='${safeItemStr}'>Details</button></div>`);
+            if (type === 'parses') {
+                try {
+                    const parsed = JSON.parse(item.data);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        detailsBtn = renderItemTableBtn(item.data);
+                    } else {
+                        detailsBtn = '<span style="color:#aaa;">No Items</span>';
+                    }
+                } catch (e) { detailsBtn = '<span style="color:red;">Error</span>'; }
+            } else {
+                // For Orders, keeping old Detail logic or upgrading?
+                // The user specifically asked for "parsed data should show in a table view".
+                // Order requests are different. Let's keep orders as "Details" button for now but make it standard.
+                const safeItemStr = JSON.stringify(item).replace(/'/g, "&apos;");
+                detailsBtn = `<button class="details-btn" data-type="${type}" data-item='${safeItemStr}'>Details</button>`;
+            }
+
+            $(container).append(`<div class="history-item"><div><p>${date}</p><p><strong>${title}</strong></p></div>${detailsBtn}</div>`);
         });
     } catch (e) { $(container).html(`<p class="error">Could not load history.</p>`); }
 }
@@ -1715,3 +1733,55 @@ $(document).ready(function () {
 
     $('#applyCustomNoteBtn').on('click', () => applyCustomNoteToAll(false));
 });
+// --- Shared Dynamic Table Renderer (User Dashboard) ---
+function renderItemTableBtn(jsonString) {
+    if (!jsonString) return '-';
+    try {
+        const safeJson = encodeURIComponent(jsonString);
+        return `<button class="btn-primary btn-sm btn-view-items" onclick="openItemTable('${safeJson}')">View Items</button>`;
+    } catch (e) { return 'Error'; }
+}
+
+window.openItemTable = function (encodedJson) {
+    try {
+        const data = JSON.parse(decodeURIComponent(encodedJson));
+        if (!Array.isArray(data) || data.length === 0) {
+            alert("No item data found.");
+            return;
+        }
+
+        // 1. Generate Columns Dynamically
+        const keys = Object.keys(data[0]);
+        const columns = keys.map(k => {
+            return {
+                title: k.replace(/_/g, ' ').toUpperCase(),
+                data: k,
+                render: function (d) {
+                    return (d === null || d === undefined) ? '' : String(d);
+                }
+            };
+        });
+
+        // 2. Init DataTable
+        if ($.fn.DataTable.isDataTable('#item-details-table')) {
+            $('#item-details-table').DataTable().destroy();
+            $('#item-details-table').empty();
+        }
+
+        $('#item-details-table').DataTable({
+            data: data,
+            columns: columns,
+            pageLength: 10,
+            scrollX: true,
+            autoWidth: false,
+            destroy: true
+        });
+
+        // 3. Show Modal
+        $('#item-details-modal').show();
+
+    } catch (e) {
+        console.error("Table Render Error", e);
+        alert("Failed to render table: " + e.message);
+    }
+};

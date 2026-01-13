@@ -99,7 +99,14 @@
                         { title: 'Method', data: 'method' },
                         {
                             title: 'Parsed Data', data: 'data', render: data => {
-                                try { return `<pre style="white-space: pre-wrap; word-break: break-all; max-width: 450px; max-height: 200px; overflow-y: auto; background: #f9f9f9; padding: 5px;">${$('<div/>').text(JSON.stringify(JSON.parse(data), null, 2)).html()}</pre>`; } catch (e) { return String(data); }
+                                try {
+                                    // Verify it's valid JSON list first
+                                    const parsed = JSON.parse(data);
+                                    if (Array.isArray(parsed) && parsed.length > 0) {
+                                        return renderItemTableBtn(data);
+                                    }
+                                    return 'No Items';
+                                } catch (e) { return 'Invalid Data'; }
                             }
                         }
                     ],

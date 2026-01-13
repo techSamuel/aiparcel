@@ -34,6 +34,19 @@
         <div id="admin-profile-message" class="message" style="display:none; margin-top: 15px;"></div>
     </div>
 </div>
+</div>
+
+<!-- Item Details Modal (Dynamic Table) -->
+<div id="item-details-modal" class="modal">
+    <div class="modal-content" style="max-width: 90%; width: 1200px;">
+        <div class="modal-header">
+            <h2>Item Details</h2><span class="close-btn">&times;</span>
+        </div>
+        <div class="table-container">
+            <table id="item-details-table" class="display data-table" style="width:100%"></table>
+        </div>
+    </div>
+</div>
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script type="text/javascript" charset="utf8"
@@ -110,7 +123,62 @@
         } catch (e) {
             showMessage('#admin-profile-message', 'Error: ' + e.message, 'error');
         }
+    }
     });
+
+    // Shared Dynamic Table Renderer
+    window.renderItemTableBtn = function (jsonString) {
+        if (!jsonString) return '-';
+        try {
+            // Encode properly for attribute
+            const safeJson = encodeURIComponent(jsonString);
+            return `<button class="btn-primary btn-sm btn-view-items" onclick="openItemTable('${safeJson}')">View Items</button>`;
+        } catch (e) { return 'Error'; }
+    };
+
+    window.openItemTable = function (encodedJson) {
+        try {
+            const data = JSON.parse(decodeURIComponent(encodedJson));
+            if (!Array.isArray(data) || data.length === 0) {
+                alert("No item data found.");
+                return;
+            }
+
+            // 1. Generate Columns Dynamically from first item keys
+            const keys = Object.keys(data[0]);
+            const columns = keys.map(k => {
+                return {
+                    title: k.replace(/_/g, ' ').toUpperCase(),
+                    data: k,
+                    render: function (d) {
+                        return (d === null || d === undefined) ? '' : String(d);
+                    }
+                };
+            });
+
+            // 2. Init DataTable
+            if ($.fn.DataTable.isDataTable('#item-details-table')) {
+                $('#item-details-table').DataTable().destroy();
+                $('#item-details-table').empty(); // Clear head/body
+            }
+
+            $('#item-details-table').DataTable({
+                data: data,
+                columns: columns,
+                pageLength: 10,
+                scrollX: true,
+                autoWidth: false,
+                destroy: true
+            });
+
+            // 3. Show Modal
+            $('#item-details-modal').show();
+
+        } catch (e) {
+            console.error("Table Render Error", e);
+            alert("Failed to render table: " + e.message);
+        }
+    };
 
     $('.modal .close-btn').on('click', function () { $(this).closest('.modal').hide(); });
     $('.modal').on('click', function (e) { if (e.target === this) $(this).hide(); });

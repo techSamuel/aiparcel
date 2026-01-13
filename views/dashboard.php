@@ -315,6 +315,18 @@ if (!defined('APP_URL')) {
 
 
 
+<!-- Item Details Modal (Dynamic Table) -->
+<div id="item-details-modal" class="modal">
+    <div class="modal-content" style="max-width: 90%; width: 1200px;">
+        <div class="modal-header">
+            <h2>Item Details</h2><span class="close-btn">&times;</span>
+        </div>
+        <div class="table-container">
+            <table id="item-details-table" class="display data-table" style="width:100%"></table>
+        </div>
+    </div>
+</div>
+
 <script src="assets/js/utils.js?v=<?php echo time(); ?>"></script>
 <script src="assets/js/dashboard.js?v=<?php echo time(); ?>"></script>
 <script src="assets/js/visitor-tracker.js?v=<?php echo time(); ?>"></script>
