@@ -130,7 +130,7 @@
         if (!jsonString) return '-';
         try {
             // Encode properly for attribute
-            const safeJson = encodeURIComponent(jsonString);
+            const safeJson = encodeURIComponent(jsonString).replace(/'/g, '%27');
             return `<button class="btn-primary btn-sm btn-view-items" onclick="openItemTable('${safeJson}')">View Items</button>`;
         } catch (e) { return 'Error'; }
     };

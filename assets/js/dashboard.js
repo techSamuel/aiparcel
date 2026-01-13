@@ -1737,7 +1737,7 @@ $(document).ready(function () {
 function renderItemTableBtn(jsonString) {
     if (!jsonString) return '-';
     try {
-        const safeJson = encodeURIComponent(jsonString);
+        const safeJson = encodeURIComponent(jsonString).replace(/'/g, '%27');
         return `<button class="btn-primary btn-sm btn-view-items" onclick="openItemTable('${safeJson}')">View Items</button>`;
     } catch (e) { return 'Error'; }
 }
