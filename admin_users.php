@@ -49,6 +49,11 @@
                                 <strong>Current Plan:</strong> ${planInfo.plan_name || 'N/A'} <br>
                                 <span style="font-size:11px; color:#666;">Expires: ${planInfo.plan_expiry_date || 'N/A'}</span>
                             </div>
+                            <div style="margin-bottom: 8px; font-size: 12px; border-top: 1px solid #eee; padding-top: 5px;">
+                                <strong>Usage & Limits:</strong><br>
+                                Orders: ${planInfo.monthly_order_count || 0} / ${(parseInt(planInfo.order_limit_monthly) + parseInt(planInfo.extra_order_limit || 0))}<br>
+                                AI Parse: ${planInfo.monthly_ai_parsed_count || 0} / ${(parseInt(planInfo.ai_parsing_limit) + parseInt(planInfo.extra_ai_parsed_limit || 0))}
+                            </div>
                             <div style="display: flex; gap: 10px; align-items: center; background: #f1f1f1; padding: 8px; border-radius: 4px;">
                                 <select id="admin-user-plan-select" style="padding: 5px; flex: 1;">${planOptions}</select>
                                 <button id="update-user-plan-btn" class="btn-primary btn-sm" data-uid="${uid}">Change Plan</button>
@@ -110,7 +115,14 @@
                             title: 'API Response', data: 'api_response', render: data => {
                                 try {
                                     const resp = JSON.parse(data);
-                                    let status = (resp.status === 'success' || resp.message === 'Order created successfully') ? '<strong style="color:green;">Success</strong>' : '<strong style="color:red;">Failed</strong>';
+                                    let isSuccess = false;
+
+                                    // Robust status check
+                                    if (resp.status === 'success' || resp.message === 'Order created successfully') isSuccess = true;
+                                    if (resp.bg_process === true) isSuccess = true; // Redx
+                                    if (resp.type && resp.type === 'success') isSuccess = true;
+
+                                    let status = isSuccess ? '<strong style="color:green;">Success</strong>' : '<strong style="color:red;">Failed</strong>';
                                     return `${status}<br><pre style="white-space: pre-wrap; word-break: break-all; max-width: 450px; font-size: 12px; background: #f9f9f9; padding: 5px;">${$('<div/>').text(JSON.stringify(resp, null, 2)).html()}</pre>`;
                                 } catch (e) { return `<pre style="white-space: pre-wrap;">${$('<div/>').text(String(data)).html()}</pre>`; }
                             }

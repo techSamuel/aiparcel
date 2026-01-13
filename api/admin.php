@@ -214,13 +214,15 @@ function handle_get_user_details()
     $details['orders'] = $stmt_orders->fetchAll();
 
     $stmt_plan = $pdo->prepare("
-        SELECT u.plan_id, p.name as plan_name, u.plan_expiry_date, u.can_manual_parse 
+        SELECT u.plan_id, p.name as plan_name, u.plan_expiry_date, u.can_manual_parse,
+               u.monthly_order_count, u.monthly_ai_parsed_count, u.extra_order_limit, u.extra_ai_parsed_limit,
+               p.order_limit_monthly, p.ai_parsing_limit, p.validity_days
         FROM users u 
         LEFT JOIN plans p ON u.plan_id = p.id 
         WHERE u.id = ?
     ");
     $stmt_plan->execute([$target_uid]);
-    $details['plan'] = $stmt_plan->fetch(); // Contains plan info AND user-specific overrides like can_manual_parse
+    $details['plan'] = $stmt_plan->fetch(PDO::FETCH_ASSOC); // Contains plan info AND user-specific overrides like can_manual_parse
 
     json_response($details);
 }

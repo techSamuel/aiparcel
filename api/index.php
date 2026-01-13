@@ -936,7 +936,7 @@ EOT;
                 require_once 'src/Exception.php';
                 require_once 'src/PHPMailer.php';
                 require_once 'src/SMTP.php';
-                $mail = new PHPMailer\PHPMailer(true);
+                $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
                 try {
                     $mail->isSMTP();
                     $mail->Host = SMTP_HOST;
@@ -999,6 +999,14 @@ EOT;
             $pdo->prepare("UPDATE users SET $alert_col = 1 WHERE id = ?")->execute([$user_id]);
             // Email sending is good practice but optional if strict logic failing, keeping it simpler for now
         }
+    }
+
+    // --- 8. SAVE TO HISTORY ---
+    try {
+        $stmt_history = $pdo->prepare("INSERT INTO parses (user_id, method, data) VALUES (?, ?, ?)");
+        $stmt_history->execute([$user_id, 'AI Text Parser', json_encode($all_parses)]);
+    } catch (Exception $e) {
+        // Ignore history save errors to avoid breaking the response
     }
 
     json_response(['parses' => $all_parses]);
