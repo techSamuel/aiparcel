@@ -1120,8 +1120,12 @@ function save_history($user_id, $type, $input, $pdo)
         return;
 
     if ($type === 'parses') {
-        $stmt = $pdo->prepare("INSERT INTO parses (user_id, method, data) VALUES (?, ?, ?)");
-        $stmt->execute([$user_id, $input['method'], json_encode($input['data'])]);
+        try {
+            $stmt = $pdo->prepare("INSERT INTO parses (user_id, method, data) VALUES (?, ?, ?)");
+            $stmt->execute([$user_id, $input['method'], json_encode($input['data'])]);
+        } catch (Exception $e) {
+            file_put_contents('ai_error_log.txt', date('Y-m-d H:i:s') . " - Local Save Error: " . $e->getMessage() . "\n", FILE_APPEND);
+        }
     }
     // Order history is saved within create_order function
     json_response(['success' => true]);
