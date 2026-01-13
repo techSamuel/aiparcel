@@ -123,7 +123,6 @@
         } catch (e) {
             showMessage('#admin-profile-message', 'Error: ' + e.message, 'error');
         }
-    }
     });
 
     // Shared Dynamic Table Renderer

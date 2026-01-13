@@ -9,14 +9,7 @@
     $(document).ready(function () {
         $('#parses-table').DataTable({
             destroy: true,
-            ajax: (d, cb) => apiCall('get_global_history', { type: 'parses' })
-                .then(res => {
-                    // DEBUG: Remove after fixing
-                    if (!res || res.length === 0) alert("Debug: API returned 0 results.");
-                    else alert("Debug: First row keys: " + Object.keys(res[0]).join(", "));
-                    cb({ data: res });
-                })
-                .catch(e => alert("Debug: API Error: " + e.message)),
+            ajax: (d, cb) => apiCall('get_global_history', { type: 'parses' }).then(res => cb({ data: res })),
             columns: [
                 { title: "Date", data: "timestamp", render: d => new Date(d).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
                 { title: "User", data: "userEmail" },
