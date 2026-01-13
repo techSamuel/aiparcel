@@ -1074,7 +1074,11 @@ async function loadHistory(type, container) {
                     } else {
                         detailsBtn = '<span style="color:#aaa;">No Items</span>';
                     }
-                } catch (e) { detailsBtn = '<span style="color:red;">Error</span>'; }
+                } catch (e) {
+                    console.error("Parse Error for item " + item.id, e, item.data);
+                    // DEBUG: Alert the error so user can tell us
+                    detailsBtn = `<button class="btn-danger btn-sm" onclick="alert('JSON Error: ${e.message}')">Error</button>`;
+                }
             } else {
                 // For Orders, keeping old Detail logic or upgrading?
                 // The user specifically asked for "parsed data should show in a table view".
