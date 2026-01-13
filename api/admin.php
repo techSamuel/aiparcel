@@ -189,7 +189,7 @@ function handle_get_global_history()
         SELECT t.*, u.email as userEmail 
         FROM $type t 
         JOIN users u ON t.user_id = u.id 
-        ORDER BY t.timestamp ASC LIMIT 50
+        ORDER BY t.timestamp DESC LIMIT 50
     ");
     $stmt->execute();
     json_response($stmt->fetchAll());
