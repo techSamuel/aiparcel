@@ -34,10 +34,16 @@ try {
     }
 
     // 3. Check Orders
-    $stmtOrder = $pdo->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY timestamp DESC LIMIT 20");
-    $stmtOrder->execute([$uid]);
-    $orders = $stmtOrder->fetchAll(PDO::FETCH_ASSOC);
-    echo "\nOrder Count: " . count($orders) . "\n";
+    // 4. Test Insert (To debug Save Issues)
+    echo "\n--- Test Insert ---\n";
+    try {
+        $stmtTest = $pdo->prepare("INSERT INTO parses (user_id, method, data) VALUES (?, ?, ?)");
+        $testData = json_encode([['test' => 'data', 'time' => time()]]);
+        $stmtTest->execute([$uid, 'DEBUG_TEST', $testData]);
+        echo "Insert Test: SUCCESS. A new record was added.\n";
+    } catch (Exception $e) {
+        echo "Insert Test: FAILED. Error: " . $e->getMessage() . "\n";
+    }
 
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage();
