@@ -1006,7 +1006,8 @@ EOT;
         $stmt_history = $pdo->prepare("INSERT INTO parses (user_id, method, data) VALUES (?, ?, ?)");
         $stmt_history->execute([$user_id, 'AI Text Parser', json_encode($all_parses)]);
     } catch (Exception $e) {
-        // Ignore history save errors to avoid breaking the response
+        // Log error to debug
+        file_put_contents('ai_error_log.txt', date('Y-m-d H:i:s') . " - History Save Error: " . $e->getMessage() . "\n", FILE_APPEND);
     }
 
     json_response(['parses' => $all_parses]);
