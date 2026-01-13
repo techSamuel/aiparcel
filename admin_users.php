@@ -98,12 +98,12 @@
                         { title: 'Date', data: 'timestamp', render: data => new Date(data).toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }) },
                         { title: 'Method', data: 'method' },
                         {
-                            title: 'Parsed Data', data: 'data', render: data => {
+                            title: 'Parsed Data', data: 'data', render: (data, type, row) => {
                                 try {
                                     // Verify it's valid JSON list first
                                     const parsed = JSON.parse(data);
                                     if (Array.isArray(parsed) && parsed.length > 0) {
-                                        return renderItemTableBtn(data);
+                                        return renderItemTableBtn(row.id, data);
                                     }
                                     return 'No Items';
                                 } catch (e) { return 'Invalid Data'; }

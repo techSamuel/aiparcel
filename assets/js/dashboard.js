@@ -1069,7 +1069,8 @@ async function loadHistory(type, container) {
                 try {
                     const parsed = JSON.parse(item.data);
                     if (Array.isArray(parsed) && parsed.length > 0) {
-                        detailsBtn = renderItemTableBtn(item.data);
+                        // Pass ID and Data to new renderer
+                        detailsBtn = renderItemTableBtn(item.id, item.data);
                     } else {
                         detailsBtn = '<span style="color:#aaa;">No Items</span>';
                     }
@@ -1734,23 +1735,28 @@ $(document).ready(function () {
     $('#applyCustomNoteBtn').on('click', () => applyCustomNoteToAll(false));
 });
 // --- Shared Dynamic Table Renderer (User Dashboard) ---
-function renderItemTableBtn(jsonString) {
+window.parsedDataCache = {};
+
+function renderItemTableBtn(id, jsonString) {
     if (!jsonString) return '-';
     try {
-        const safeJson = encodeURIComponent(jsonString).replace(/'/g, '%27');
-        return `<button class="btn-primary btn-sm btn-view-items" onclick="openItemTable('${safeJson}')">View Items</button>`;
+        window.parsedDataCache[id] = jsonString;
+        return `<button class="btn-primary btn-sm btn-view-items" onclick="openItemTableFromCache(${id})">View Items</button>`;
     } catch (e) { return 'Error'; }
 }
 
-window.openItemTable = function (encodedJson) {
+window.openItemTableFromCache = function (id) {
     try {
-        const data = JSON.parse(decodeURIComponent(encodedJson));
+        const jsonString = window.parsedDataCache[id];
+        if (!jsonString) return alert("Data lost. Please refresh.");
+
+        const data = JSON.parse(jsonString);
         if (!Array.isArray(data) || data.length === 0) {
             alert("No item data found.");
             return;
         }
 
-        // 1. Generate Columns Dynamically
+        // 1. Generate Columns
         const keys = Object.keys(data[0]);
         const columns = keys.map(k => {
             return {

@@ -18,10 +18,10 @@
                     title: "Items",
                     data: "data",
                     orderable: false,
-                    render: data => {
+                    render: (data, type, row) => {
                         try {
                             const parsed = JSON.parse(data);
-                            return (Array.isArray(parsed) && parsed.length > 0) ? renderItemTableBtn(data) : '0';
+                            return (Array.isArray(parsed) && parsed.length > 0) ? renderItemTableBtn(row.id, data) : '0';
                         } catch (e) { return '?'; }
                     }
                 }

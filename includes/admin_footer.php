@@ -125,32 +125,52 @@
         }
     });
 
-    // Shared Dynamic Table Renderer
-    window.renderItemTableBtn = function (jsonString) {
+    // Shared Dynamic Table Renderer (Cached Version)
+    window.parsedDataCache = {};
+
+    window.renderItemTableBtn = function (id, jsonString) {
         if (!jsonString) return '-';
         try {
-            // Encode properly for attribute
-            const safeJson = encodeURIComponent(jsonString).replace(/'/g, '%27');
-            return `<button class="btn-primary btn-sm btn-view-items" onclick="openItemTable('${safeJson}')">View Items</button>`;
+            // Cache the data instead of embedding it
+            window.parsedDataCache[id] = jsonString;
+            return `<button class="btn-primary btn-sm btn-view-items" onclick="openItemTableFromCache(${id})">View Items</button>`;
         } catch (e) { return 'Error'; }
     };
 
-    window.openItemTable = function (encodedJson) {
+    window.openItemTableFromCache = function (id) {
+        const jsonString = window.parsedDataCache[id];
+        if (!jsonString) {
+            alert("Data not found in cache. Please reload.");
+            return;
+        }
+        // Use the existing logic or the same function body
+        window.openItemTableEncoded(jsonString); // Delegate to keep logic clean if needed, or just inline here.
+    };
+
+    // Renamed for internal use, though we decode differently now.
+    // Let's just inline the logic to be safe and simple
+    window.openItemTableFromCache = function (id) {
         try {
-            const data = JSON.parse(decodeURIComponent(encodedJson));
+            const jsonString = window.parsedDataCache[id];
+             if (!jsonString) {
+                alert("Data lost. Please refresh the page.");
+                return;
+            }
+            const data = JSON.parse(jsonString);
+            
             if (!Array.isArray(data) || data.length === 0) {
                 alert("No item data found.");
                 return;
             }
 
-            // 1. Generate Columns Dynamically from first item keys
+            // 1. Generate Columns
             const keys = Object.keys(data[0]);
             const columns = keys.map(k => {
                 return {
                     title: k.replace(/_/g, ' ').toUpperCase(),
                     data: k,
                     render: function (d) {
-                        return (d === null || d === undefined) ? '' : String(d);
+                         return (d === null || d === undefined) ? '' : String(d);
                     }
                 };
             });
@@ -158,7 +178,7 @@
             // 2. Init DataTable
             if ($.fn.DataTable.isDataTable('#item-details-table')) {
                 $('#item-details-table').DataTable().destroy();
-                $('#item-details-table').empty(); // Clear head/body
+                $('#item-details-table').empty(); 
             }
 
             $('#item-details-table').DataTable({
