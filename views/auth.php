@@ -92,6 +92,8 @@ if (!defined('APP_URL')) {
             </div>
 
             <p style="margin-top: 20px; font-size: 14px; color: #666;">Didn't receive the code?</p>
+            <p style="font-size: 13px; color: #888; margin-top: 5px;">Please check your spam or junk folder. (আপনার
+                স্প্যাম বা জাঙ্ক ফোল্ডার চেক করুন।)</p>
             <button id="resendVerificationBtn"
                 style="background: none; border: none; color: var(--primary-color); cursor: pointer; text-decoration: underline; font-weight: 500;">
                 Resend Verification Code <span class="loader"></span>
