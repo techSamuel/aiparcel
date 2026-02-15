@@ -724,8 +724,14 @@ async function checkFraudRisk(buttonElement) {
  * Converts Bengali numerals (০-৯) to English digits (0-9).
  */
 function convertBengaliToEnglish(str) {
-    const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-    return str.replace(/[০-৯]/g, (match) => bengaliDigits.indexOf(match));
+    return str.split('').map(char => {
+        // Bengali digits: ০ (U+09E6) to ৯ (U+09EF)
+        const code = char.charCodeAt(0);
+        if (code >= 0x09E6 && code <= 0x09EF) {
+            return (code - 0x09E6).toString();
+        }
+        return char;
+    }).join('');
 }
 
 /**

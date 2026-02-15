@@ -189,14 +189,14 @@ function normalizePhoneNumber(phone) {
 }
 
 // Global Helper: Convert Bengali Numerals to English
-// Global Helper: Convert Bengali Numerals to English
 function convertBengaliToEnglishNumerals(str) {
     if (!str) return str;
-    const bengali = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-
-    return str.toString().replace(/[०-৯]/g, (char) => {
-        const index = bengali.indexOf(char);
-        return index > -1 ? english[index] : char;
-    });
+    return str.toString().split('').map(char => {
+        // Bengali digits: ০ (U+09E6) to ৯ (U+09EF)
+        const code = char.charCodeAt(0);
+        if (code >= 0x09E6 && code <= 0x09EF) {
+            return (code - 0x09E6).toString();
+        }
+        return char;
+    }).join('');
 }
