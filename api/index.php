@@ -1881,6 +1881,45 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
         json_response(['error' => 'Invalid or missing phone number.'], 400);
     }
 
+    // --- CHECK STEADFAST OFFICIAL API ---
+    $stmt_stores = $pdo->prepare("SELECT credentials FROM stores WHERE user_id = ? AND courier_type = 'steadfast' LIMIT 1");
+    $stmt_stores->execute([$user_id]);
+    $steadfast_store = $stmt_stores->fetch();
+
+    if ($steadfast_store) {
+        $credentials = json_decode($steadfast_store['credentials'], true);
+        $api_key = $credentials['api_key'] ?? $credentials['apiKey'] ?? null;
+        $secret_key = $credentials['secret_key'] ?? $credentials['secretKey'] ?? null;
+
+        if ($api_key && $secret_key) {
+            $ch = curl_init("https://portal.steadfast.com.bd/api/v1/fraud_check/score/" . urlencode($phone));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Api-Key: $api_key",
+                "Secret-Key: $secret_key",
+                "Content-Type: application/json"
+            ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 && $response) {
+                $sfData = json_decode($response, true);
+                if (isset($sfData['status']) && $sfData['status'] == 200) {
+                    json_response(['is_official' => true, 'data' => $sfData]);
+                    return;
+                }
+            } elseif ($httpCode === 401) {
+                json_response(['error' => 'Invalid Steadfast API credentials. Please fix them in Store Management.'], 401);
+            } elseif ($httpCode === 429) {
+                json_response(['error' => 'Steadfast API rate limit exceeded. Please try again later.'], 429);
+            }
+            // Fallback to scrapers for other errors
+        }
+    }
+    // --- END STEADFAST OFFICIAL API ---
+
     $servers = [
         [
             'url' => 'https://fraud-checker.storex.com.bd/',

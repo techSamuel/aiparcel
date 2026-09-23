@@ -9,7 +9,7 @@ define('DB_PASS', '$zUuj;eX1By');
 define('DB_NAME', 'u374415227_aiparcel');
 
 // Email Verification URL
-define('APP_URL', 'https://courier.aiparcel.site'); // Change this to your domain
+define('APP_URL', 'https://aiparcel.site'); // Change this to your domain
 
 
 
@@ -27,7 +27,7 @@ define('ADMIN_NOTIFICATION_EMAIL', 'rodalsoft@gmail.com'); // Email for purchase
 
 // Facebook Pixel Configuration
 define('FACEBOOK_PIXEL_ID', '1998033140769737'); // AiParcel Pixel ID
-define('FACEBOOK_ACCESS_TOKEN', 'YOUR_ACCESS_TOKEN_HERE'); // Get this from Events Manager -> Settings -> Generate Access Token
+define('FACEBOOK_ACCESS_TOKEN', 'EAAP31bjA638BQUmVAun4xmS3BPml4q417pDZA04GOhPW2tJaZCfDzdfCBUzaKFFPZBI48WXSyFNrxWxQxST1GLnEZA9N5jt8NTB4nbCEhlWZBAvAr9cayZA9OatCu5BQJsdNCwoKTuq3ZAH7iZAngBsMCiHQbv5V5KJKiBxgnYm51pswKZACt1g858ZCa31imUTgZDZD'); // Get this from Events Manager -> Settings -> Generate Access Token
 
 // Google OAuth Configuration
 // Client ID and Secret are now managed via the Admin Panel -> Settings

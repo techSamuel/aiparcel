@@ -663,42 +663,82 @@ async function checkFraudRisk(buttonElement) {
     resultsContainer.innerHTML = '<div class="loader" style="display:block; margin: 10px auto; height: 20px; width: 20px;"></div>';
 
     try {
-        const data = await apiCall('check_fraud_risk', { phone: phoneNumber });
-        let totalOrders = 0; let totalDelivered = 0;
-        data.forEach(courier => {
-            totalOrders += parseInt(courier.orders) || 0;
-            totalDelivered += parseInt(courier.delivered) || 0;
-        });
-        const successRatio = totalOrders > 0 ? ((totalDelivered / totalOrders) * 100).toFixed(1) : 0;
-        let ratioColor = '#27ae60';
-        if (successRatio < 80) ratioColor = '#f39c12';
-        if (successRatio < 60) ratioColor = '#c0392b';
-
-        let tableHTML = `<table class="fraud-results-table"><thead><tr><th>Courier</th><th>Orders</th><th>Delivered</th><th>Cancelled</th><th>Cancel Rate</th></tr></thead><tbody>`;
-        data.forEach(courier => {
-            tableHTML += `<tr><td>${courier.courier}</td><td>${courier.orders}</td><td>${courier.delivered}</td><td>${courier.cancelled}</td><td>${courier.cancel_rate}</td></tr>`;
-        });
-        tableHTML += '</tbody></table>';
-
-        // Extract server source from data (all rows should have same server)
-        const serverSource = data[0]?.server || 'Unknown';
-        const serverName = serverSource.replace(/https?:\/\//, '').split('/')[0];
-
+        const result = await apiCall('check_fraud_risk', { phone: phoneNumber });
+        
+        let finalHTML = '';
         const uniqueId = `details-${phoneNumber}-${Date.now()}`;
-        const finalHTML = `
-            <div style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9;">
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <span style="font-weight: 600; font-size: 13px;">
-                        Delivery Success Ratio: 
-                        <strong style="color: ${ratioColor}; font-size: 15px;">${successRatio}%</strong>
-                        <span style="font-size: 11px; color: #888; margin-left: 8px;">(${serverName})</span>
-                    </span>
-                    <button class="toggle-details-btn btn-secondary btn-sm" data-target="#${uniqueId}" style="white-space: nowrap;">Show Details</button>
-                </div>
-                <div id="${uniqueId}" style="display: none; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
-                    ${tableHTML}
-                </div>
-            </div>`;
+
+        if (result.is_official) {
+            const sfData = result.data;
+            const score = sfData.score || 0;
+            const level = sfData.level || 'unknown';
+            let ratioColor = '#27ae60';
+            if (score < 80) ratioColor = '#f39c12';
+            if (score < 60) ratioColor = '#c0392b';
+
+            let reasonsHTML = '';
+            if (sfData.reasons && sfData.reasons.length > 0) {
+                reasonsHTML = `<ul style="margin:0; padding-left: 20px;">${sfData.reasons.map(r => `<li>${r}</li>`).join('')}</ul>`;
+            } else {
+                reasonsHTML = 'None';
+            }
+
+            finalHTML = `
+                <div style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span style="font-weight: 600; font-size: 13px;">
+                            Steadfast Risk Score: 
+                            <strong style="color: ${ratioColor}; font-size: 15px;">${score}%</strong>
+                            <span style="font-size: 11px; color: #888; margin-left: 8px;">(${level})</span>
+                            <span style="font-size: 11px; color: #1a73e8; margin-left: 4px;">[Official API]</span>
+                        </span>
+                        <button class="toggle-details-btn btn-secondary btn-sm" data-target="#${uniqueId}" style="white-space: nowrap;">Show Details</button>
+                    </div>
+                    <div id="${uniqueId}" style="display: none; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; font-size: 13px;">
+                        <p style="margin:0 0 5px;"><strong>Total Reports:</strong> ${sfData.total_reports || 0}</p>
+                        <p style="margin:0 0 5px;"><strong>Doubtful Reports:</strong> ${sfData.doubtful_reports ? 'Yes' : 'No'}</p>
+                        <p style="margin:0 0 5px;"><strong>Reasons:</strong></p>
+                        ${reasonsHTML}
+                    </div>
+                </div>`;
+        } else {
+            const data = result;
+            let totalOrders = 0; let totalDelivered = 0;
+            data.forEach(courier => {
+                totalOrders += parseInt(courier.orders) || 0;
+                totalDelivered += parseInt(courier.delivered) || 0;
+            });
+            const successRatio = totalOrders > 0 ? ((totalDelivered / totalOrders) * 100).toFixed(1) : 0;
+            let ratioColor = '#27ae60';
+            if (successRatio < 80) ratioColor = '#f39c12';
+            if (successRatio < 60) ratioColor = '#c0392b';
+
+            let tableHTML = `<table class="fraud-results-table"><thead><tr><th>Courier</th><th>Orders</th><th>Delivered</th><th>Cancelled</th><th>Cancel Rate</th></tr></thead><tbody>`;
+            data.forEach(courier => {
+                tableHTML += `<tr><td>${courier.courier}</td><td>${courier.orders}</td><td>${courier.delivered}</td><td>${courier.cancelled}</td><td>${courier.cancel_rate}</td></tr>`;
+            });
+            tableHTML += '</tbody></table>';
+
+            // Extract server source from data (all rows should have same server)
+            const serverSource = data[0]?.server || 'Unknown';
+            const serverName = serverSource.replace(/https?:\/\//, '').split('/')[0];
+
+            finalHTML = `
+                <div style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span style="font-weight: 600; font-size: 13px;">
+                            Delivery Success Ratio: 
+                            <strong style="color: ${ratioColor}; font-size: 15px;">${successRatio}%</strong>
+                            <span style="font-size: 11px; color: #888; margin-left: 8px;">(${serverName})</span>
+                        </span>
+                        <button class="toggle-details-btn btn-secondary btn-sm" data-target="#${uniqueId}" style="white-space: nowrap;">Show Details</button>
+                    </div>
+                    <div id="${uniqueId}" style="display: none; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+                        ${tableHTML}
+                    </div>
+                </div>`;
+        }
+
         resultsContainer.innerHTML = finalHTML;
         buttonElement.textContent = 'Checked';
 
