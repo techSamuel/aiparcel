@@ -151,7 +151,7 @@
             <label style="font-weight:600; font-size:14px; display:block; margin-bottom:5px;">Cron URL:</label>
             <div
                 style="background: #f8f9fa; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; word-break: break-all; user-select: all;">
-                <?php echo defined('APP_URL') ? APP_URL : 'https://courier.aiparcel.site'; ?>/api/cron.php
+                <?php echo defined('APP_URL') ? APP_URL : 'https://aiparcel.online/'; ?>/api/cron.php
             </div>
         </div>
 
@@ -160,7 +160,7 @@
                 Hostinger):</label>
             <div
                 style="background: #2d2d2d; color: #00ff00; padding: 10px; border-radius: 4px; font-family: monospace; word-break: break-all; user-select: all;">
-                curl -s "<?php echo defined('APP_URL') ? APP_URL : 'https://courier.aiparcel.site'; ?>/api/cron.php"
+                curl -s "<?php echo defined('APP_URL') ? APP_URL : 'https://aiparcel.online'; ?>/api/cron.php"
                 >/dev/null 2>&1
             </div>
             <p style="color:#666; font-size: 0.85em; margin-top:5px;">Set this to run <strong>Once Per Day (e.g., at
