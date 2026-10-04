@@ -1892,7 +1892,7 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
         $secret_key = $credentials['secret_key'] ?? $credentials['secretKey'] ?? null;
 
         if ($api_key && $secret_key) {
-            $ch = curl_init("https://portal.steadfast.com.bd/api/v1/fraud_check/score/" . urlencode($phone));
+            $ch = curl_init("https://portal.packzy.com/api/v1/fraud_check/score/" . urlencode($phone));
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 "Api-Key: $api_key",
                 "Secret-Key: $secret_key",
