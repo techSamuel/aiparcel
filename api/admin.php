@@ -497,7 +497,10 @@ function handle_get_settings()
         'enableSocialPlugins' => $settings['enable_social_plugins'] ?? '0',
         'seoTitle' => $settings['seo_title'] ?? '',
         'seoDescription' => $settings['seo_description'] ?? '',
-        'seoImageUrl' => $settings['seo_image_url'] ?? ''
+        'seoImageUrl' => $settings['seo_image_url'] ?? '',
+        'enableDomainNotice' => $settings['enable_domain_notice'] ?? '0',
+        'domainNoticeText' => $settings['domain_notice_text'] ?? '',
+        'domainNoticeLink' => $settings['domain_notice_link'] ?? ''
     ]);
 }
 
@@ -527,7 +530,10 @@ function handle_save_settings()
             'enable_social_plugins' => $_POST['enableSocialPlugins'] ?? '0',
             'seo_title' => $_POST['seoTitle'] ?? '',
             'seo_description' => $_POST['seoDescription'] ?? '',
-            'seo_image_url' => $_POST['seoImageUrl'] ?? ''
+            'seo_image_url' => $_POST['seoImageUrl'] ?? '',
+            'enable_domain_notice' => $_POST['enableDomainNotice'] ?? '0',
+            'domain_notice_text' => $_POST['domainNoticeText'] ?? '',
+            'domain_notice_link' => $_POST['domainNoticeLink'] ?? ''
         ];
 
         if (isset($_FILES['appLogoFile']) && $_FILES['appLogoFile']['error'] == UPLOAD_ERR_OK) {

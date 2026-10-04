@@ -71,6 +71,8 @@ if (!defined('APP_URL')) {
 
     <div class="plan-status" id="plan-status-view" style="display:none;"></div>
 
+    <div id="domain-notice-view" style="display:none; background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 12px; margin-bottom: 20px; border-radius: 8px; font-weight: bold; text-align: center; font-size: 15px;"></div>
+
     <div class="section">
         <h2>Create New Parcel(s)</h2>
         <div>

@@ -153,6 +153,13 @@ switch ($action) {
             // Fetch help content
             $stmt_help = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'help_content'");
             $data['helpContent'] = $stmt_help->fetchColumn() ?: '';
+
+            // Fetch domain notice settings
+            $stmt_notice = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('enable_domain_notice', 'domain_notice_text', 'domain_notice_link')");
+            $notice_settings = $stmt_notice->fetchAll(PDO::FETCH_KEY_PAIR);
+            $data['enableDomainNotice'] = $notice_settings['enable_domain_notice'] ?? '0';
+            $data['domainNoticeText'] = $notice_settings['domain_notice_text'] ?? '';
+            $data['domainNoticeLink'] = $notice_settings['domain_notice_link'] ?? '';
         }
 
         json_response($data);

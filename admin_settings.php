@@ -109,6 +109,23 @@
                 <textarea id="helpContent" rows="15"
                     placeholder="Enter the HTML and CSS for your help guide here..."></textarea>
             </div>
+            <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <label>Domain Change Notification (Dashboard)</label>
+                <div style="margin-bottom: 15px;">
+                    <label style="cursor:pointer; font-weight: normal; display:flex; align-items:center; gap: 8px;">
+                        <input type="checkbox" id="enableDomainNotice"> Enable Domain Change Notification
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="domainNoticeText">Notification Text (e.g. in Bengali)</label>
+                    <input type="text" id="domainNoticeText" placeholder="আমাদের নতুন ডোমেইন...">
+                </div>
+                <div class="form-group">
+                    <label for="domainNoticeLink">New Domain Link (Clickable)</label>
+                    <input type="text" id="domainNoticeLink" placeholder="https://newdomain.com">
+                </div>
+            </div>
+
             <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Settings</button>
     </form>
 </div>
@@ -197,6 +214,9 @@
                 $('#seoTitle').val(result.seoTitle || '');
                 $('#seoDescription').val(result.seoDescription || '');
                 $('#seoImageUrl').val(result.seoImageUrl || '');
+                $('#enableDomainNotice').prop('checked', result.enableDomainNotice == '1' || result.enableDomainNotice === 'true');
+                $('#domainNoticeText').val(result.domainNoticeText || '');
+                $('#domainNoticeLink').val(result.domainNoticeLink || '');
                 if (result.seoImageUrl) {
                     $('#seoImagePreview').attr('src', result.seoImageUrl).show();
                 }
@@ -242,6 +262,9 @@
             formData.append('seoTitle', $('#seoTitle').val());
             formData.append('seoDescription', $('#seoDescription').val());
             formData.append('seoImageUrl', $('#seoImageUrl').val());
+            formData.append('enableDomainNotice', $('#enableDomainNotice').is(':checked') ? '1' : '0');
+            formData.append('domainNoticeText', $('#domainNoticeText').val());
+            formData.append('domainNoticeLink', $('#domainNoticeLink').val());
 
             const seoImageFile = $('#seoImageFile')[0].files[0];
             if (seoImageFile) formData.append('seoImageFile', seoImageFile);

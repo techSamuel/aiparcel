@@ -118,6 +118,17 @@ async function renderAppView() {
         if (openHelpModalBtn) openHelpModalBtn.onclick = () => $('#help-modal').show();
     }
 
+    // Domain Notice
+    const domainNoticeView = document.getElementById('domain-notice-view');
+    if (domainNoticeView && (data.enableDomainNotice == '1' || data.enableDomainNotice === 'true')) {
+        const text = data.domainNoticeText || 'আমাদের নতুন ওয়েবসাইট:';
+        const link = data.domainNoticeLink || '#';
+        domainNoticeView.innerHTML = `${text} <a href="${link}" target="_blank" style="color: #0056b3; text-decoration: underline;">${link}</a>`;
+        domainNoticeView.style.display = 'block';
+    } else if (domainNoticeView) {
+        domainNoticeView.style.display = 'none';
+    }
+
     // Parser Settings
     let savedSettings = data.parserSettings;
     let fields = [...DEFAULT_PARSER_FIELDS];
