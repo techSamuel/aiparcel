@@ -1908,24 +1908,26 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
                 $sfData = json_decode($response, true);
                 if (isset($sfData['status']) && $sfData['status'] == 200) {
                     json_response(['is_official' => true, 'data' => $sfData]);
-                    return;
+                } else {
+                    json_response(['error' => 'Steadfast API returned an unexpected response structure.'], 500);
                 }
             } elseif ($httpCode === 401) {
                 json_response(['error' => 'Invalid Steadfast API credentials. Please fix them in Store Management.'], 401);
             } elseif ($httpCode === 429) {
                 json_response(['error' => 'Steadfast API rate limit exceeded. Please try again later.'], 429);
+            } else {
+                json_response(['error' => "Steadfast Official API failed (HTTP $httpCode)"], 500);
             }
-            // Fallback to scrapers for other errors
         }
     }
     // --- END STEADFAST OFFICIAL API ---
 
     $servers = [
-        [
-            'url' => 'https://fraud-checker.storex.com.bd/',
-            'function' => 'tryFraudCheckStorex'
-        ],
-        /* Temporarily disabled: Returns N/A for major couriers
+        // [
+        //     'url' => 'https://fraud-checker.storex.com.bd/',
+        //     'function' => 'tryFraudCheckStorex'
+        // ],
+        // Temporarily disabled: Returns N/A for major couriers
         [
             'url' => 'https://fraudchecker.link/free-fraud-checker-bd/',
             'function' => 'tryFraudCheckLink'
@@ -1934,15 +1936,15 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
             'url' => 'https://elitemart.com.bd/fraud-check',
             'function' => 'tryFraudCheckElite'
         ],
-        */
+
         [
             'url' => 'https://onecodesoft.com/fraudchecker',
             'function' => 'tryFraudCheckOnecodesoft'
         ],
-        [
-            'url' => 'https://www.bdcommerce.app/tools/delivery-fraud-check/',
-            'function' => 'tryFraudCheckBDCommerce'
-        ],
+        // [
+        //     'url' => 'https://www.bdcommerce.app/tools/delivery-fraud-check/',
+        //     'function' => 'tryFraudCheckBDCommerce'
+        // ],
     ];
 
     // Helper: test server latency
