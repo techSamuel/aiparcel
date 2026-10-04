@@ -670,35 +670,53 @@ async function checkFraudRisk(buttonElement) {
 
         if (result.is_official) {
             const sfData = result.data;
-            const score = sfData.score || 0;
-            const level = sfData.level || 'unknown';
+            const deliveryRatio = sfData.delivery_ratio !== null ? sfData.delivery_ratio : 'N/A';
+            const cancellationRatio = sfData.cancellation_ratio !== null ? sfData.cancellation_ratio : 'N/A';
+            const volumeBand = sfData.volume_band || 'N/A';
+            const volumeRange = sfData.volume_range || 'N/A';
+            
             let ratioColor = '#27ae60';
-            if (score < 80) ratioColor = '#f39c12';
-            if (score < 60) ratioColor = '#c0392b';
+            if (sfData.delivery_ratio !== null) {
+                if (sfData.delivery_ratio < 80) ratioColor = '#f39c12';
+                if (sfData.delivery_ratio < 60) ratioColor = '#c0392b';
+            }
 
-            let reasonsHTML = '';
-            if (sfData.reasons && sfData.reasons.length > 0) {
-                reasonsHTML = `<ul style="margin:0; padding-left: 20px;">${sfData.reasons.map(r => `<li>${r}</li>`).join('')}</ul>`;
-            } else {
-                reasonsHTML = 'None';
+            let fraudCategoriesHTML = 'None';
+            if (sfData.fraud_categories) {
+                if (!Array.isArray(sfData.fraud_categories) && Object.keys(sfData.fraud_categories).length > 0) {
+                    let cats = [];
+                    for (let [code, times] of Object.entries(sfData.fraud_categories)) {
+                        cats.push(`<li>${code}: ${times}</li>`);
+                    }
+                    if (cats.length > 0) {
+                        fraudCategoriesHTML = `<ul style="margin:0; padding-left: 20px;">${cats.join('')}</ul>`;
+                    }
+                } else if (Array.isArray(sfData.fraud_categories) && sfData.fraud_categories.length > 0) {
+                    fraudCategoriesHTML = `<ul style="margin:0; padding-left: 20px;">${sfData.fraud_categories.map(c => `<li>${JSON.stringify(c)}</li>`).join('')}</ul>`;
+                }
             }
 
             finalHTML = `
                 <div style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9;">
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
                         <span style="font-weight: 600; font-size: 13px;">
-                            Steadfast Risk Score: 
-                            <strong style="color: ${ratioColor}; font-size: 15px;">${score}%</strong>
-                            <span style="font-size: 11px; color: #888; margin-left: 8px;">(${level})</span>
-                            <span style="font-size: 11px; color: #1a73e8; margin-left: 4px;">[Official API]</span>
+                            Delivery Success: 
+                            <strong style="color: ${ratioColor}; font-size: 15px;">${deliveryRatio}${deliveryRatio !== 'N/A' ? '%' : ''}</strong>
+                            <span style="font-size: 11px; color: #888; margin-left: 8px;">(Vol: ${volumeRange})</span>
+                            <span style="font-size: 11px; color: #1a73e8; margin-left: 4px;">[Steadfast Official]</span>
                         </span>
                         <button class="toggle-details-btn btn-secondary btn-sm" data-target="#${uniqueId}" style="white-space: nowrap;">Show Details</button>
                     </div>
                     <div id="${uniqueId}" style="display: none; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; font-size: 13px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span><strong>Delivery Ratio:</strong> ${deliveryRatio}${deliveryRatio !== 'N/A' ? '%' : ''}</span>
+                            <span><strong>Cancel Ratio:</strong> ${cancellationRatio}${cancellationRatio !== 'N/A' ? '%' : ''}</span>
+                        </div>
+                        <p style="margin:0 0 5px;"><strong>Volume Band:</strong> ${volumeBand}</p>
                         <p style="margin:0 0 5px;"><strong>Total Reports:</strong> ${sfData.total_reports || 0}</p>
                         <p style="margin:0 0 5px;"><strong>Doubtful Reports:</strong> ${sfData.doubtful_reports ? 'Yes' : 'No'}</p>
-                        <p style="margin:0 0 5px;"><strong>Reasons:</strong></p>
-                        ${reasonsHTML}
+                        <p style="margin:0 0 5px;"><strong>Fraud Categories:</strong></p>
+                        ${fraudCategoriesHTML}
                     </div>
                 </div>`;
         } else {
