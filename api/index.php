@@ -1902,6 +1902,7 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
             curl_setopt($ch, CURLOPT_TIMEOUT, 10);
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
             curl_close($ch);
 
             if ($httpCode === 200 && $response) {
@@ -1916,7 +1917,8 @@ function runFraudCheckOnBestServer($user_id, $input, $pdo)
             } elseif ($httpCode === 429) {
                 json_response(['error' => 'Steadfast API rate limit exceeded. Please try again later.'], 429);
             } else {
-                json_response(['error' => "Steadfast Official API failed (HTTP $httpCode)"], 500);
+                $errMsg = $httpCode === 0 ? "Connection failed: $curlError" : "HTTP $httpCode";
+                json_response(['error' => "Steadfast Official API failed ($errMsg)"], 500);
             }
         }
     }
